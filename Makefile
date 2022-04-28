@@ -56,17 +56,6 @@ CMAKE_BINARY_DIR = /home/kevin/Documents/research/amass_inverse_dynamics
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
-
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
-
-.PHONY : rebuild_cache/fast
-
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -77,6 +66,17 @@ edit_cache:
 edit_cache/fast: edit_cache
 
 .PHONY : edit_cache/fast
+
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/usr/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+
+.PHONY : rebuild_cache/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -111,6 +111,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named CharacterViewer.out
+
+# Build rule for target.
+CharacterViewer.out: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 CharacterViewer.out
+.PHONY : CharacterViewer.out
+
+# fast build rule for target.
+CharacterViewer.out/fast:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/build
+.PHONY : CharacterViewer.out/fast
+
+#=============================================================================
 # Target rules for targets named inverse.out
 
 # Build rule for target.
@@ -123,290 +136,599 @@ inverse.out/fast:
 	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/build
 .PHONY : inverse.out/fast
 
-# target to build an object file
-src/BVHData.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/BVHData.o
+src/BVHData.o: src/BVHData.cpp.o
+
 .PHONY : src/BVHData.o
 
-# target to preprocess a source file
-src/BVHData.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/BVHData.i
+# target to build an object file
+src/BVHData.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/BVHData.cpp.o
+.PHONY : src/BVHData.cpp.o
+
+src/BVHData.i: src/BVHData.cpp.i
+
 .PHONY : src/BVHData.i
 
-# target to generate assembly for a file
-src/BVHData.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/BVHData.s
+# target to preprocess a source file
+src/BVHData.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/BVHData.cpp.i
+.PHONY : src/BVHData.cpp.i
+
+src/BVHData.s: src/BVHData.cpp.s
+
 .PHONY : src/BVHData.s
 
+# target to generate assembly for a file
+src/BVHData.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/BVHData.cpp.s
+.PHONY : src/BVHData.cpp.s
+
+src/CharacterViewer.o: src/CharacterViewer.cpp.o
+
+.PHONY : src/CharacterViewer.o
+
 # target to build an object file
-src/c_butterworth/c_butterworth.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/c_butterworth.o
+src/CharacterViewer.cpp.o:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/CharacterViewer.cpp.o
+.PHONY : src/CharacterViewer.cpp.o
+
+src/CharacterViewer.i: src/CharacterViewer.cpp.i
+
+.PHONY : src/CharacterViewer.i
+
+# target to preprocess a source file
+src/CharacterViewer.cpp.i:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/CharacterViewer.cpp.i
+.PHONY : src/CharacterViewer.cpp.i
+
+src/CharacterViewer.s: src/CharacterViewer.cpp.s
+
+.PHONY : src/CharacterViewer.s
+
+# target to generate assembly for a file
+src/CharacterViewer.cpp.s:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/CharacterViewer.cpp.s
+.PHONY : src/CharacterViewer.cpp.s
+
+src/PyUtil.o: src/PyUtil.cpp.o
+
+.PHONY : src/PyUtil.o
+
+# target to build an object file
+src/PyUtil.cpp.o:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/PyUtil.cpp.o
+.PHONY : src/PyUtil.cpp.o
+
+src/PyUtil.i: src/PyUtil.cpp.i
+
+.PHONY : src/PyUtil.i
+
+# target to preprocess a source file
+src/PyUtil.cpp.i:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/PyUtil.cpp.i
+.PHONY : src/PyUtil.cpp.i
+
+src/PyUtil.s: src/PyUtil.cpp.s
+
+.PHONY : src/PyUtil.s
+
+# target to generate assembly for a file
+src/PyUtil.cpp.s:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/PyUtil.cpp.s
+.PHONY : src/PyUtil.cpp.s
+
+src/SimCharacter.o: src/SimCharacter.cpp.o
+
+.PHONY : src/SimCharacter.o
+
+# target to build an object file
+src/SimCharacter.cpp.o:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/SimCharacter.cpp.o
+.PHONY : src/SimCharacter.cpp.o
+
+src/SimCharacter.i: src/SimCharacter.cpp.i
+
+.PHONY : src/SimCharacter.i
+
+# target to preprocess a source file
+src/SimCharacter.cpp.i:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/SimCharacter.cpp.i
+.PHONY : src/SimCharacter.cpp.i
+
+src/SimCharacter.s: src/SimCharacter.cpp.s
+
+.PHONY : src/SimCharacter.s
+
+# target to generate assembly for a file
+src/SimCharacter.cpp.s:
+	$(MAKE) -f CMakeFiles/CharacterViewer.out.dir/build.make CMakeFiles/CharacterViewer.out.dir/src/SimCharacter.cpp.s
+.PHONY : src/SimCharacter.cpp.s
+
+src/c_butterworth/c_butterworth.o: src/c_butterworth/c_butterworth.cpp.o
+
 .PHONY : src/c_butterworth/c_butterworth.o
 
-# target to preprocess a source file
-src/c_butterworth/c_butterworth.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/c_butterworth.i
+# target to build an object file
+src/c_butterworth/c_butterworth.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/c_butterworth.cpp.o
+.PHONY : src/c_butterworth/c_butterworth.cpp.o
+
+src/c_butterworth/c_butterworth.i: src/c_butterworth/c_butterworth.cpp.i
+
 .PHONY : src/c_butterworth/c_butterworth.i
 
-# target to generate assembly for a file
-src/c_butterworth/c_butterworth.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/c_butterworth.s
+# target to preprocess a source file
+src/c_butterworth/c_butterworth.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/c_butterworth.cpp.i
+.PHONY : src/c_butterworth/c_butterworth.cpp.i
+
+src/c_butterworth/c_butterworth.s: src/c_butterworth/c_butterworth.cpp.s
+
 .PHONY : src/c_butterworth/c_butterworth.s
 
-# target to build an object file
-src/c_butterworth/rtGetInf.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetInf.o
+# target to generate assembly for a file
+src/c_butterworth/c_butterworth.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/c_butterworth.cpp.s
+.PHONY : src/c_butterworth/c_butterworth.cpp.s
+
+src/c_butterworth/rtGetInf.o: src/c_butterworth/rtGetInf.cpp.o
+
 .PHONY : src/c_butterworth/rtGetInf.o
 
-# target to preprocess a source file
-src/c_butterworth/rtGetInf.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetInf.i
+# target to build an object file
+src/c_butterworth/rtGetInf.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetInf.cpp.o
+.PHONY : src/c_butterworth/rtGetInf.cpp.o
+
+src/c_butterworth/rtGetInf.i: src/c_butterworth/rtGetInf.cpp.i
+
 .PHONY : src/c_butterworth/rtGetInf.i
 
-# target to generate assembly for a file
-src/c_butterworth/rtGetInf.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetInf.s
+# target to preprocess a source file
+src/c_butterworth/rtGetInf.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetInf.cpp.i
+.PHONY : src/c_butterworth/rtGetInf.cpp.i
+
+src/c_butterworth/rtGetInf.s: src/c_butterworth/rtGetInf.cpp.s
+
 .PHONY : src/c_butterworth/rtGetInf.s
 
-# target to build an object file
-src/c_butterworth/rtGetNaN.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetNaN.o
+# target to generate assembly for a file
+src/c_butterworth/rtGetInf.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetInf.cpp.s
+.PHONY : src/c_butterworth/rtGetInf.cpp.s
+
+src/c_butterworth/rtGetNaN.o: src/c_butterworth/rtGetNaN.cpp.o
+
 .PHONY : src/c_butterworth/rtGetNaN.o
 
-# target to preprocess a source file
-src/c_butterworth/rtGetNaN.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetNaN.i
+# target to build an object file
+src/c_butterworth/rtGetNaN.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetNaN.cpp.o
+.PHONY : src/c_butterworth/rtGetNaN.cpp.o
+
+src/c_butterworth/rtGetNaN.i: src/c_butterworth/rtGetNaN.cpp.i
+
 .PHONY : src/c_butterworth/rtGetNaN.i
 
-# target to generate assembly for a file
-src/c_butterworth/rtGetNaN.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetNaN.s
+# target to preprocess a source file
+src/c_butterworth/rtGetNaN.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetNaN.cpp.i
+.PHONY : src/c_butterworth/rtGetNaN.cpp.i
+
+src/c_butterworth/rtGetNaN.s: src/c_butterworth/rtGetNaN.cpp.s
+
 .PHONY : src/c_butterworth/rtGetNaN.s
 
-# target to build an object file
-src/c_butterworth/rt_nonfinite.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rt_nonfinite.o
+# target to generate assembly for a file
+src/c_butterworth/rtGetNaN.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rtGetNaN.cpp.s
+.PHONY : src/c_butterworth/rtGetNaN.cpp.s
+
+src/c_butterworth/rt_nonfinite.o: src/c_butterworth/rt_nonfinite.cpp.o
+
 .PHONY : src/c_butterworth/rt_nonfinite.o
 
-# target to preprocess a source file
-src/c_butterworth/rt_nonfinite.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rt_nonfinite.i
+# target to build an object file
+src/c_butterworth/rt_nonfinite.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rt_nonfinite.cpp.o
+.PHONY : src/c_butterworth/rt_nonfinite.cpp.o
+
+src/c_butterworth/rt_nonfinite.i: src/c_butterworth/rt_nonfinite.cpp.i
+
 .PHONY : src/c_butterworth/rt_nonfinite.i
 
-# target to generate assembly for a file
-src/c_butterworth/rt_nonfinite.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rt_nonfinite.s
+# target to preprocess a source file
+src/c_butterworth/rt_nonfinite.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rt_nonfinite.cpp.i
+.PHONY : src/c_butterworth/rt_nonfinite.cpp.i
+
+src/c_butterworth/rt_nonfinite.s: src/c_butterworth/rt_nonfinite.cpp.s
+
 .PHONY : src/c_butterworth/rt_nonfinite.s
 
-# target to build an object file
-src/ext/alglibinternal.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibinternal.o
+# target to generate assembly for a file
+src/c_butterworth/rt_nonfinite.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/c_butterworth/rt_nonfinite.cpp.s
+.PHONY : src/c_butterworth/rt_nonfinite.cpp.s
+
+src/ext/alglibinternal.o: src/ext/alglibinternal.cpp.o
+
 .PHONY : src/ext/alglibinternal.o
 
-# target to preprocess a source file
-src/ext/alglibinternal.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibinternal.i
+# target to build an object file
+src/ext/alglibinternal.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibinternal.cpp.o
+.PHONY : src/ext/alglibinternal.cpp.o
+
+src/ext/alglibinternal.i: src/ext/alglibinternal.cpp.i
+
 .PHONY : src/ext/alglibinternal.i
 
-# target to generate assembly for a file
-src/ext/alglibinternal.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibinternal.s
+# target to preprocess a source file
+src/ext/alglibinternal.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibinternal.cpp.i
+.PHONY : src/ext/alglibinternal.cpp.i
+
+src/ext/alglibinternal.s: src/ext/alglibinternal.cpp.s
+
 .PHONY : src/ext/alglibinternal.s
 
-# target to build an object file
-src/ext/alglibmisc.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibmisc.o
+# target to generate assembly for a file
+src/ext/alglibinternal.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibinternal.cpp.s
+.PHONY : src/ext/alglibinternal.cpp.s
+
+src/ext/alglibmisc.o: src/ext/alglibmisc.cpp.o
+
 .PHONY : src/ext/alglibmisc.o
 
-# target to preprocess a source file
-src/ext/alglibmisc.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibmisc.i
+# target to build an object file
+src/ext/alglibmisc.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibmisc.cpp.o
+.PHONY : src/ext/alglibmisc.cpp.o
+
+src/ext/alglibmisc.i: src/ext/alglibmisc.cpp.i
+
 .PHONY : src/ext/alglibmisc.i
 
-# target to generate assembly for a file
-src/ext/alglibmisc.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibmisc.s
+# target to preprocess a source file
+src/ext/alglibmisc.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibmisc.cpp.i
+.PHONY : src/ext/alglibmisc.cpp.i
+
+src/ext/alglibmisc.s: src/ext/alglibmisc.cpp.s
+
 .PHONY : src/ext/alglibmisc.s
 
-# target to build an object file
-src/ext/ap.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/ap.o
+# target to generate assembly for a file
+src/ext/alglibmisc.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/alglibmisc.cpp.s
+.PHONY : src/ext/alglibmisc.cpp.s
+
+src/ext/ap.o: src/ext/ap.cpp.o
+
 .PHONY : src/ext/ap.o
 
-# target to preprocess a source file
-src/ext/ap.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/ap.i
+# target to build an object file
+src/ext/ap.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/ap.cpp.o
+.PHONY : src/ext/ap.cpp.o
+
+src/ext/ap.i: src/ext/ap.cpp.i
+
 .PHONY : src/ext/ap.i
 
-# target to generate assembly for a file
-src/ext/ap.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/ap.s
+# target to preprocess a source file
+src/ext/ap.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/ap.cpp.i
+.PHONY : src/ext/ap.cpp.i
+
+src/ext/ap.s: src/ext/ap.cpp.s
+
 .PHONY : src/ext/ap.s
 
-# target to build an object file
-src/ext/dataanalysis.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/dataanalysis.o
+# target to generate assembly for a file
+src/ext/ap.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/ap.cpp.s
+.PHONY : src/ext/ap.cpp.s
+
+src/ext/dataanalysis.o: src/ext/dataanalysis.cpp.o
+
 .PHONY : src/ext/dataanalysis.o
 
-# target to preprocess a source file
-src/ext/dataanalysis.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/dataanalysis.i
+# target to build an object file
+src/ext/dataanalysis.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/dataanalysis.cpp.o
+.PHONY : src/ext/dataanalysis.cpp.o
+
+src/ext/dataanalysis.i: src/ext/dataanalysis.cpp.i
+
 .PHONY : src/ext/dataanalysis.i
 
-# target to generate assembly for a file
-src/ext/dataanalysis.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/dataanalysis.s
+# target to preprocess a source file
+src/ext/dataanalysis.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/dataanalysis.cpp.i
+.PHONY : src/ext/dataanalysis.cpp.i
+
+src/ext/dataanalysis.s: src/ext/dataanalysis.cpp.s
+
 .PHONY : src/ext/dataanalysis.s
 
-# target to build an object file
-src/ext/diffequations.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/diffequations.o
+# target to generate assembly for a file
+src/ext/dataanalysis.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/dataanalysis.cpp.s
+.PHONY : src/ext/dataanalysis.cpp.s
+
+src/ext/diffequations.o: src/ext/diffequations.cpp.o
+
 .PHONY : src/ext/diffequations.o
 
-# target to preprocess a source file
-src/ext/diffequations.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/diffequations.i
+# target to build an object file
+src/ext/diffequations.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/diffequations.cpp.o
+.PHONY : src/ext/diffequations.cpp.o
+
+src/ext/diffequations.i: src/ext/diffequations.cpp.i
+
 .PHONY : src/ext/diffequations.i
 
-# target to generate assembly for a file
-src/ext/diffequations.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/diffequations.s
+# target to preprocess a source file
+src/ext/diffequations.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/diffequations.cpp.i
+.PHONY : src/ext/diffequations.cpp.i
+
+src/ext/diffequations.s: src/ext/diffequations.cpp.s
+
 .PHONY : src/ext/diffequations.s
 
-# target to build an object file
-src/ext/fasttransforms.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/fasttransforms.o
+# target to generate assembly for a file
+src/ext/diffequations.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/diffequations.cpp.s
+.PHONY : src/ext/diffequations.cpp.s
+
+src/ext/fasttransforms.o: src/ext/fasttransforms.cpp.o
+
 .PHONY : src/ext/fasttransforms.o
 
-# target to preprocess a source file
-src/ext/fasttransforms.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/fasttransforms.i
+# target to build an object file
+src/ext/fasttransforms.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/fasttransforms.cpp.o
+.PHONY : src/ext/fasttransforms.cpp.o
+
+src/ext/fasttransforms.i: src/ext/fasttransforms.cpp.i
+
 .PHONY : src/ext/fasttransforms.i
 
-# target to generate assembly for a file
-src/ext/fasttransforms.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/fasttransforms.s
+# target to preprocess a source file
+src/ext/fasttransforms.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/fasttransforms.cpp.i
+.PHONY : src/ext/fasttransforms.cpp.i
+
+src/ext/fasttransforms.s: src/ext/fasttransforms.cpp.s
+
 .PHONY : src/ext/fasttransforms.s
 
-# target to build an object file
-src/ext/integration.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/integration.o
+# target to generate assembly for a file
+src/ext/fasttransforms.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/fasttransforms.cpp.s
+.PHONY : src/ext/fasttransforms.cpp.s
+
+src/ext/integration.o: src/ext/integration.cpp.o
+
 .PHONY : src/ext/integration.o
 
-# target to preprocess a source file
-src/ext/integration.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/integration.i
+# target to build an object file
+src/ext/integration.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/integration.cpp.o
+.PHONY : src/ext/integration.cpp.o
+
+src/ext/integration.i: src/ext/integration.cpp.i
+
 .PHONY : src/ext/integration.i
 
-# target to generate assembly for a file
-src/ext/integration.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/integration.s
+# target to preprocess a source file
+src/ext/integration.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/integration.cpp.i
+.PHONY : src/ext/integration.cpp.i
+
+src/ext/integration.s: src/ext/integration.cpp.s
+
 .PHONY : src/ext/integration.s
 
-# target to build an object file
-src/ext/interpolation.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/interpolation.o
+# target to generate assembly for a file
+src/ext/integration.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/integration.cpp.s
+.PHONY : src/ext/integration.cpp.s
+
+src/ext/interpolation.o: src/ext/interpolation.cpp.o
+
 .PHONY : src/ext/interpolation.o
 
-# target to preprocess a source file
-src/ext/interpolation.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/interpolation.i
+# target to build an object file
+src/ext/interpolation.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/interpolation.cpp.o
+.PHONY : src/ext/interpolation.cpp.o
+
+src/ext/interpolation.i: src/ext/interpolation.cpp.i
+
 .PHONY : src/ext/interpolation.i
 
-# target to generate assembly for a file
-src/ext/interpolation.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/interpolation.s
+# target to preprocess a source file
+src/ext/interpolation.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/interpolation.cpp.i
+.PHONY : src/ext/interpolation.cpp.i
+
+src/ext/interpolation.s: src/ext/interpolation.cpp.s
+
 .PHONY : src/ext/interpolation.s
 
-# target to build an object file
-src/ext/linalg.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/linalg.o
+# target to generate assembly for a file
+src/ext/interpolation.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/interpolation.cpp.s
+.PHONY : src/ext/interpolation.cpp.s
+
+src/ext/linalg.o: src/ext/linalg.cpp.o
+
 .PHONY : src/ext/linalg.o
 
-# target to preprocess a source file
-src/ext/linalg.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/linalg.i
+# target to build an object file
+src/ext/linalg.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/linalg.cpp.o
+.PHONY : src/ext/linalg.cpp.o
+
+src/ext/linalg.i: src/ext/linalg.cpp.i
+
 .PHONY : src/ext/linalg.i
 
-# target to generate assembly for a file
-src/ext/linalg.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/linalg.s
+# target to preprocess a source file
+src/ext/linalg.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/linalg.cpp.i
+.PHONY : src/ext/linalg.cpp.i
+
+src/ext/linalg.s: src/ext/linalg.cpp.s
+
 .PHONY : src/ext/linalg.s
 
-# target to build an object file
-src/ext/optimization.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/optimization.o
+# target to generate assembly for a file
+src/ext/linalg.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/linalg.cpp.s
+.PHONY : src/ext/linalg.cpp.s
+
+src/ext/optimization.o: src/ext/optimization.cpp.o
+
 .PHONY : src/ext/optimization.o
 
-# target to preprocess a source file
-src/ext/optimization.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/optimization.i
+# target to build an object file
+src/ext/optimization.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/optimization.cpp.o
+.PHONY : src/ext/optimization.cpp.o
+
+src/ext/optimization.i: src/ext/optimization.cpp.i
+
 .PHONY : src/ext/optimization.i
 
-# target to generate assembly for a file
-src/ext/optimization.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/optimization.s
+# target to preprocess a source file
+src/ext/optimization.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/optimization.cpp.i
+.PHONY : src/ext/optimization.cpp.i
+
+src/ext/optimization.s: src/ext/optimization.cpp.s
+
 .PHONY : src/ext/optimization.s
 
-# target to build an object file
-src/ext/solvers.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/solvers.o
+# target to generate assembly for a file
+src/ext/optimization.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/optimization.cpp.s
+.PHONY : src/ext/optimization.cpp.s
+
+src/ext/solvers.o: src/ext/solvers.cpp.o
+
 .PHONY : src/ext/solvers.o
 
-# target to preprocess a source file
-src/ext/solvers.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/solvers.i
+# target to build an object file
+src/ext/solvers.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/solvers.cpp.o
+.PHONY : src/ext/solvers.cpp.o
+
+src/ext/solvers.i: src/ext/solvers.cpp.i
+
 .PHONY : src/ext/solvers.i
 
-# target to generate assembly for a file
-src/ext/solvers.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/solvers.s
+# target to preprocess a source file
+src/ext/solvers.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/solvers.cpp.i
+.PHONY : src/ext/solvers.cpp.i
+
+src/ext/solvers.s: src/ext/solvers.cpp.s
+
 .PHONY : src/ext/solvers.s
 
-# target to build an object file
-src/ext/specialfunctions.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/specialfunctions.o
+# target to generate assembly for a file
+src/ext/solvers.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/solvers.cpp.s
+.PHONY : src/ext/solvers.cpp.s
+
+src/ext/specialfunctions.o: src/ext/specialfunctions.cpp.o
+
 .PHONY : src/ext/specialfunctions.o
 
-# target to preprocess a source file
-src/ext/specialfunctions.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/specialfunctions.i
+# target to build an object file
+src/ext/specialfunctions.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/specialfunctions.cpp.o
+.PHONY : src/ext/specialfunctions.cpp.o
+
+src/ext/specialfunctions.i: src/ext/specialfunctions.cpp.i
+
 .PHONY : src/ext/specialfunctions.i
 
-# target to generate assembly for a file
-src/ext/specialfunctions.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/specialfunctions.s
+# target to preprocess a source file
+src/ext/specialfunctions.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/specialfunctions.cpp.i
+.PHONY : src/ext/specialfunctions.cpp.i
+
+src/ext/specialfunctions.s: src/ext/specialfunctions.cpp.s
+
 .PHONY : src/ext/specialfunctions.s
 
-# target to build an object file
-src/ext/statistics.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/statistics.o
+# target to generate assembly for a file
+src/ext/specialfunctions.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/specialfunctions.cpp.s
+.PHONY : src/ext/specialfunctions.cpp.s
+
+src/ext/statistics.o: src/ext/statistics.cpp.o
+
 .PHONY : src/ext/statistics.o
 
-# target to preprocess a source file
-src/ext/statistics.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/statistics.i
+# target to build an object file
+src/ext/statistics.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/statistics.cpp.o
+.PHONY : src/ext/statistics.cpp.o
+
+src/ext/statistics.i: src/ext/statistics.cpp.i
+
 .PHONY : src/ext/statistics.i
 
-# target to generate assembly for a file
-src/ext/statistics.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/statistics.s
+# target to preprocess a source file
+src/ext/statistics.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/statistics.cpp.i
+.PHONY : src/ext/statistics.cpp.i
+
+src/ext/statistics.s: src/ext/statistics.cpp.s
+
 .PHONY : src/ext/statistics.s
 
-# target to build an object file
-src/inverse.o:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/inverse.o
+# target to generate assembly for a file
+src/ext/statistics.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/ext/statistics.cpp.s
+.PHONY : src/ext/statistics.cpp.s
+
+src/inverse.o: src/inverse.cpp.o
+
 .PHONY : src/inverse.o
 
-# target to preprocess a source file
-src/inverse.i:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/inverse.i
+# target to build an object file
+src/inverse.cpp.o:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/inverse.cpp.o
+.PHONY : src/inverse.cpp.o
+
+src/inverse.i: src/inverse.cpp.i
+
 .PHONY : src/inverse.i
 
-# target to generate assembly for a file
-src/inverse.s:
-	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/inverse.s
+# target to preprocess a source file
+src/inverse.cpp.i:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/inverse.cpp.i
+.PHONY : src/inverse.cpp.i
+
+src/inverse.s: src/inverse.cpp.s
+
 .PHONY : src/inverse.s
+
+# target to generate assembly for a file
+src/inverse.cpp.s:
+	$(MAKE) -f CMakeFiles/inverse.out.dir/build.make CMakeFiles/inverse.out.dir/src/inverse.cpp.s
+.PHONY : src/inverse.cpp.s
 
 # Help Target
 help:
@@ -414,12 +736,22 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
-	@echo "... rebuild_cache"
 	@echo "... edit_cache"
+	@echo "... rebuild_cache"
+	@echo "... CharacterViewer.out"
 	@echo "... inverse.out"
 	@echo "... src/BVHData.o"
 	@echo "... src/BVHData.i"
 	@echo "... src/BVHData.s"
+	@echo "... src/CharacterViewer.o"
+	@echo "... src/CharacterViewer.i"
+	@echo "... src/CharacterViewer.s"
+	@echo "... src/PyUtil.o"
+	@echo "... src/PyUtil.i"
+	@echo "... src/PyUtil.s"
+	@echo "... src/SimCharacter.o"
+	@echo "... src/SimCharacter.i"
+	@echo "... src/SimCharacter.s"
 	@echo "... src/c_butterworth/c_butterworth.o"
 	@echo "... src/c_butterworth/c_butterworth.i"
 	@echo "... src/c_butterworth/c_butterworth.s"
