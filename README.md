@@ -2,6 +2,8 @@
 
 [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 
+[nlohmann::json](https://github.com/nlohmann/json)
+
 [DART](https://dartsim.github.io/)
 
 
