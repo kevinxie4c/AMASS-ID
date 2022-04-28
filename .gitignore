@@ -6,3 +6,4 @@ CMakeFiles/
 *.bak
 .tags
 imgui.ini
+Makefile
