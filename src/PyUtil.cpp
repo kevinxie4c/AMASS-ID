@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include "PyUtil.h"
 
-void print_py_obj(PyObject* pyobj)
+void print_py_obj(PyObject *pyobj)
 {
     PyObject_Print(pyobj, stdout, Py_PRINT_RAW);
 }
@@ -47,13 +47,13 @@ PyObject* load_npz(std::string fname)
     return NULL;
 }
 
-Eigen::MatrixXd npa2mat(PyObject* npa)
+Eigen::MatrixXd npa2mat(PyObject *npa)
 {
     Eigen::MatrixXd mat;
-    PyObject* pValue;
+    PyObject *pValue;
     int n, m;
 
-    PyObject* pShape = PyObject_GetAttrString(npa, "shape");
+    PyObject *pShape = PyObject_GetAttrString(npa, "shape");
     //print_py_obj(pShape);
     pValue = PyTuple_GetItem(pShape, 0);
     n = PyLong_AsSize_t(pValue);    // number of rows
@@ -70,10 +70,48 @@ Eigen::MatrixXd npa2mat(PyObject* npa)
 	{
 	    pValue = PyObject_CallMethod(npa, "item", "ii", i, j);
 	    double d = PyFloat_AsDouble(pValue);
-	    //Py_DECREF(pValue);
+	    Py_DECREF(pValue);
 	    mat(i,j) = d;
 	}
     }
 
     return mat;
+}
+
+std::vector<Eigen::MatrixXd> npa2mat_vector(PyObject *npa)
+{
+    PyObject *pValue;
+    int n, m, l;
+
+    PyObject *pShape = PyObject_GetAttrString(npa, "shape");
+    //print_py_obj(pShape);
+    pValue = PyTuple_GetItem(pShape, 0);
+    l = PyLong_AsSize_t(pValue);    // number of matrices
+    pValue = PyTuple_GetItem(pShape, 1);
+    n = PyLong_AsSize_t(pValue);    // number of rows
+    //Py_DECREF(pValue);
+    pValue = PyTuple_GetItem(pShape, 2);
+    m = PyLong_AsSize_t(pValue);    // number of columns
+    //Py_DECREF(pValue);
+    Py_DECREF(pShape);
+
+    l = 500;
+    std::vector<Eigen::MatrixXd> list;
+    for (int k = 0; k < l; ++k)
+    {
+	Eigen::MatrixXd mat = Eigen::MatrixXd(n, m);
+	for (int i = 0; i < n; ++i)
+	{
+	    for (int j = 0; j < m; ++j)
+	    {
+		pValue = PyObject_CallMethod(npa, "item", "iii", k, i, j);
+		double d = PyFloat_AsDouble(pValue);
+		Py_DECREF(pValue);
+		mat(i,j) = d;
+	    }
+	}
+	list.push_back(mat);
+    }
+
+    return list;
 }

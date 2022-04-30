@@ -1,5 +1,7 @@
 CMakeCache.txt
 CMakeFiles/
+__pycache__/
+data/body_models/
 *.cmake
 *.swp
 *.out

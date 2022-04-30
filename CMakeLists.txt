@@ -31,4 +31,4 @@ message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
 message(STATUS "Python3_LINK_OPTIONS: ${Python3_LINK_OPTIONS}")
 
 add_executable(CharacterViewer.out src/CharacterViewer.cpp src/SimCharacter.cpp src/PyUtil.cpp)
-target_link_libraries(CharacterViewer.out stdc++ dart dart-gui-osg osg osgViewer assimp boost_system dart-external-imgui ${Python3_LINK_OPTIONS})
+target_link_libraries(CharacterViewer.out stdc++ dart dart-gui-osg osg osgViewer osgUtil assimp boost_system dart-external-imgui ${Python3_LINK_OPTIONS})

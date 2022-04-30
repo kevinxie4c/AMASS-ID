@@ -1,6 +1,6 @@
 {
     "name": "pelvis",
-    "pos": [0, 0, 0],
+    "pos": [-4.063530825078487396e-03, -2.392509132623672485e-01, 2.880949527025222778e-02],
     "type": "free",
     "shape": [
 	{
@@ -17,10 +17,6 @@
 	    "type": "box",
 	    "size": [0.05, 0.119877316057682, 0.05],
 	    "pos": [0.00215414678677916, 0.059938658028841, -0.0183956678956747]
-	},
-	{
-	    "type": "mesh",
-	    "path": "data/body_parts/body_part_mesh_00.obj"
 	}
     ],
     "children": [
@@ -33,10 +29,6 @@
 		    "type": "box",
 		    "size": [0.05, 0.354976981878281, 0.05],
 		    "pos": [0.0193000305444002, -0.17748849093914, 0.00394851667806506]
-		},
-		{
-		    "type": "mesh",
-		    "path": "data/body_parts/body_part_mesh_01.obj"
 		}
 	    ],
 	    "children": [
@@ -49,10 +41,6 @@
 			    "type": "box",
 			    "size": [0.05, 0.387481331825256, 0.05],
 			    "pos": [-0.0068921484053135, -0.193740665912628, -0.0176212452352047]
-			},
-			{
-			    "type": "mesh",
-			    "path": "data/body_parts/body_part_mesh_04.obj"
 			}
 		    ],
 		    "children": [
@@ -65,23 +53,13 @@
 				    "type": "box",
 				    "size": [0.05, 0.05, 0.114341367036104],
 				    "pos": [0.0179569609463215, -0.0274718403816223, 0.057170683518052]
-				},
-				{
-				    "type": "mesh",
-				    "path": "data/body_parts/body_part_mesh_07.obj"
 				}
 			    ],
 			    "children": [
 				{
 				    "name": "lSole",
 				    "pos": [0.035913921892643, -0.0549436807632446, 0.114341367036104],
-				    "type": "ball",
-				    "shape": [
-					{
-					    "type": "mesh",
-					    "path": "data/body_parts/body_part_mesh_10.obj"
-					}
-				    ]
+				    "type": "ball"
 				}]
 
 			}]
@@ -98,10 +76,6 @@
 		    "type": "box",
 		    "size": [0.05, 0.350051045417786, 0.05],
 		    "pos": [-0.0194955170154571, -0.175025522708893, -0.00102055631577969]
-		},
-		{
-		    "type": "mesh",
-		    "path": "data/body_parts/body_part_mesh_02.obj"
 		}
 	    ],
 	    "children": [
@@ -114,10 +88,6 @@
 			    "type": "box",
 			    "size": [0.05, 0.37867683172226, 0.05],
 			    "pos": [0.00860583409667015, -0.18933841586113, -0.0160824619233608]
-			},
-			{
-			    "type": "mesh",
-			    "path": "data/body_parts/body_part_mesh_05.obj"
 			}
 		    ],
 		    "children": [
@@ -130,23 +100,13 @@
 				    "type": "box",
 				    "size": [0.05, 0.05, 0.121788941323757],
 				    "pos": [-0.013969387859106, -0.0282955169677735, 0.0608944706618785]
-				},
-				{
-				    "type": "mesh",
-				    "path": "data/body_parts/body_part_mesh_08.obj"
 				}
 			    ],
 			    "children": [
 				{
 				    "name": "rSole",
 				    "pos": [-0.0279387757182121, -0.0565910339355469, 0.121788941323757],
-				    "type": "ball",
-				    "shape": [
-					{
-					    "type": "mesh",
-					    "path": "data/body_parts/body_part_mesh_11.obj"
-					}
-				    ]
+				    "type": "ball"
 				}]
 
 			}]
@@ -163,10 +123,6 @@
 		    "type": "box",
 		    "size": [0.05, 0.133516728878021, 0.05],
 		    "pos": [0.0030019199475646, 0.0667583644390105, 0.0132315792143345]
-		},
-		{
-		    "type": "mesh",
-		    "path": "data/body_parts/body_part_mesh_03.obj"
 		}
 	    ],
 	    "children": [
@@ -179,10 +135,6 @@
 			    "type": "box",
 			    "size": [0.05, 0.0555925220251083, 0.05],
 			    "pos": [-0.00088565982878208, 0.0277962610125542, 0.00076418463140726]
-			},
-			{
-			    "type": "mesh",
-			    "path": "data/body_parts/body_part_mesh_06.obj"
 			}
 		    ],
 		    "children": [
@@ -205,10 +157,6 @@
 				    "type": "box",
 				    "size": [0.05, 0.10787209123373, 0.05],
 				    "pos": [-0.0383952548727393, 0.053936045616865, -0.0110643841326236]
-				},
-				{
-				    "type": "mesh",
-				    "path": "data/body_parts/body_part_mesh_09.obj"
 				}
 			    ],
 			    "children": [
@@ -221,23 +169,13 @@
 					    "type": "box",
 					    "size": [0.05, 0.0874870419502258, 0.05],
 					    "pos": [0.00440825894474983, 0.0437435209751129, 0.0213810596615076]
-					},
-					{
-					    "type": "mesh",
-					    "path": "data/body_parts/body_part_mesh_12.obj"
 					}
 				    ],
 				    "children": [
 					{
 					    "name": "head",
 					    "pos": [0.00881651788949966, 0.0874870419502258, 0.0427621193230152],
-					    "type": "ball",
-					    "shape": [
-						{
-						    "type": "mesh",
-						    "path": "data/body_parts/body_part_mesh_15.obj"
-						}
-					    ]
+					    "type": "ball"
 					}]
 
 				},
@@ -250,10 +188,6 @@
 					    "type": "box",
 					    "size": [0.117079876363277, 0.05, 0.05],
 					    "pos": [0.0585399381816385, 0.0197577551007271, -0.00893758423626425]
-					},
-					{
-					    "type": "mesh",
-					    "path": "data/body_parts/body_part_mesh_13.obj"
 					}
 				    ],
 				    "children": [
@@ -266,10 +200,6 @@
 						    "type": "box",
 						    "size": [0.23239529132843, 0.05, 0.05],
 						    "pos": [0.116197645664215, -0.0054015815258026, -0.00977402459830045]
-						},
-						{
-						    "type": "mesh",
-						    "path": "data/body_parts/body_part_mesh_16.obj"
 						}
 					    ],
 					    "children": [
@@ -282,23 +212,13 @@
 							    "type": "box",
 							    "size": [0.245249301195145, 0.05, 0.05],
 							    "pos": [0.122624650597572, 0.00457859039306641, -0.00460430234670639]
-							},
-							{
-							    "type": "mesh",
-							    "path": "data/body_parts/body_part_mesh_18.obj"
 							}
 						    ],
 						    "children": [
 							{
 							    "name": "lHand",
 							    "pos": [0.245249301195145, 0.00915718078613281, -0.00920860469341278],
-							    "type": "ball",
-							    "shape": [
-								{
-								    "type": "mesh",
-								    "path": "data/body_parts/body_part_mesh_20.obj"
-								}
-							    ]
+							    "type": "ball"
 							}]
 
 						}]
@@ -315,10 +235,6 @@
 					    "type": "box",
 					    "size": [0.107205338776112, 0.05, 0.05],
 					    "pos": [-0.053602669388056, 0.0197276771068573, -0.00446321908384562]
-					},
-					{
-					    "type": "mesh",
-					    "path": "data/body_parts/body_part_mesh_14.obj"
 					}
 				    ],
 				    "children": [
@@ -331,10 +247,6 @@
 						    "type": "box",
 						    "size": [0.237343594431877, 0.05, 0.05],
 						    "pos": [-0.118671797215938, -0.00452525913715362, -0.013489194214344]
-						},
-						{
-						    "type": "mesh",
-						    "path": "data/body_parts/body_part_mesh_17.obj"
 						}
 					    ],
 					    "children": [
@@ -347,23 +259,13 @@
 							    "type": "box",
 							    "size": [0.247722119092941, 0.05, 0.05],
 							    "pos": [-0.123861059546471, 0.00246590375900269, -0.0034512672573328]
-							},
-							{
-							    "type": "mesh",
-							    "path": "data/body_parts/body_part_mesh_19.obj"
 							}
 						    ],
 						    "children": [
 							{
 							    "name": "rHand",
 							    "pos": [-0.247722119092941, 0.00493180751800537, -0.0069025345146656],
-							    "type": "ball",
-							    "shape": [
-								{
-								    "type": "mesh",
-								    "path": "data/body_parts/body_part_mesh_21.obj"
-								}
-							    ]
+							    "type": "ball"
 							}]
 
 						}]
