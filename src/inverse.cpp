@@ -3,8 +3,11 @@
 #include <vector>
 #include <map>
 #include <Eigen/Core>
-#include "dart/dart.hpp"
-#include "BVHData.h"
+#include <dart/dart.hpp>
+#include <Python.h>
+#include "SimCharacter.h"
+#include "PyUtil.h"
+#include "IOUtil.h"
 #include "ext/optimization.h"
 #include "c_butterworth/c_butterworth_types.h"
 #include "c_butterworth/c_butterworth.h"
@@ -16,77 +19,61 @@ using namespace dart::dynamics;
 using namespace dart::simulation;
 using namespace alglib;
 
-std::vector<double> readListFrom(const std::string &filename)
-{
-    std::ifstream input(filename);
-    std::vector<double> list;
-    double d;
-    while (input >> d)
-	list.push_back(d);
-    input.close();
-    return list;
-}
-
-std::vector<Eigen::VectorXd> readVectorXdListFrom(const std::string &filename)
-{
-    std::ifstream input(filename);
-    std::vector<Eigen::VectorXd> result;
-    std::string line;
-    while (std::getline(input, line))
-    {
-	std::stringstream strStream(line);
-	std::vector<double> list;
-	double d;
-	while (strStream >> d)
-	    list.push_back(d);
-	Eigen::VectorXd v(list.size());
-	for (size_t i = 0; i < list.size(); ++i)
-	    v[i] = list[i];
-	result.push_back(v);
-    }
-    input.close();
-    return result;
-}
-
 int main(int argc, char* argv[])
 {
-    string bvhFilename;
+    string jsonFilename;
     string posFilename;
-    string massFilename;
-    string comFilename;
     string contactNodesFilename;
-    double frameTime, cutoffFreq;
-    if (argc == 8)
+    double frameTime, cutoffFreq, groundOffset;
+    if (argc == 7)
     {
-	bvhFilename = argv[1];
+	jsonFilename = argv[1];
 	posFilename = argv[2];
-	massFilename = argv[3];
-	comFilename = argv[4];
-	contactNodesFilename = argv[5];
-	frameTime = stod(argv[6]);
-	cutoffFreq = stod(argv[7]);
+	contactNodesFilename = argv[3];
+	frameTime = stod(argv[4]);
+	cutoffFreq = stod(argv[5]);
+	groundOffset = stod(argv[6]);
     }
     else
     {
-	cout << "usage: " << argv[0] << " bvh_file pos_file mass_file com_file contact_file frame_time cutoff_freq" << endl;
+	cout << "usage: " << argv[0] << " json_file pos_file contact_file frame_time cutoff_freq ground_offset" << endl;
 	exit(0);
     }
-    BVHData bvh;
-    bvh.loadBVH(bvhFilename, "", "", 1);
+    SimCharacter character(jsonFilename);
     WorldPtr world = World::create();
-    SkeletonPtr &skeleton = bvh.skeleton;
+    SkeletonPtr &skeleton = character.skeleton;
 
-    vector<double> massList = readListFrom(massFilename);
-    vector<VectorXd> comList = readVectorXdListFrom(comFilename);
-    std::vector<dart::dynamics::BodyNode*> bns = bvh.skeleton->getBodyNodes();
-    for (size_t i = 0; i < bns.size(); ++i)
-    {
-	bns[i]->setMass(massList[i]);
-	bns[i]->setLocalCOM(comList[i]);
-	cout << bns[i]->getName() << endl;
-	cout << bns[i]->getMass() << endl;
-	cout << bns[i]->getLocalCOM() << endl;
-    }
+    std::vector<dart::dynamics::BodyNode*> bns = skeleton->getBodyNodes();
+
+    Py_Initialize();
+    //PySys_SetArgv(argc, argv);
+    PyRun_SimpleString("import sys\n"
+		       "sys.path.append(\".\")\n"
+                       "print('python version:', sys.version)\n");
+
+    PyObject *pDict = load_npz(posFilename);
+    //print_py_obj(pDict);
+    PyObject *npa;
+    npa = PyMapping_GetItemString(pDict, "trans");
+    //print_py_obj(npa);
+    Eigen::MatrixXd trans = npa2mat(npa);
+    //Py_DECREF(npa);
+    //std::cout << trans.row(0) << std::endl;
+    npa = PyMapping_GetItemString(pDict, "poses");
+    Eigen::MatrixXd poses_orig = npa2mat(npa);
+    //Py_DECREF(npa);
+    //std::cout << poses_orig.row(0) << std::endl;
+    Py_DECREF(pDict);
+
+    std::vector<size_t> indices{0, 3, 12, 21, 30, 6, 15, 24, 33, 9, 18, 27, 36, 45, 39, 48, 54, 60, 42, 51, 57, 63};
+    Eigen::MatrixXd poses(poses_orig.rows(), indices.size() * 3);
+    for (size_t i = 0; i < indices.size(); ++i)
+	poses.middleCols(i * 3, 3) = poses_orig.middleCols(indices[i], 3);
+
+    Eigen::MatrixXd position_mat = Eigen::MatrixXd(poses.rows(), poses.cols() + 3);
+    position_mat.leftCols(3) = poses.leftCols(3);
+    position_mat.middleCols(3, 3) = trans;
+    position_mat.rightCols(poses.cols() - 3) = poses.rightCols(poses.cols() - 3);
 
     world->addSkeleton(skeleton);
     vector<VectorXd> positions;
@@ -94,14 +81,10 @@ int main(int argc, char* argv[])
     vector<VectorXd> accelerations;
     //skeleton->setGravity(Vector3d(0, -9.8, 0));
     skeleton->setGravity(Vector3d(0, 0, -9.8));
-    positions = readVectorXdListFrom(posFilename);
+    for (size_t i = 0; i < position_mat.rows(); ++i)
+	positions.push_back(position_mat.row(i));
     for (size_t i = 0; i < positions.size() - 1; ++i)
-	velocities.push_back(bvh.skeleton->getPositionDifferences(positions[i + 1], positions[i]) / frameTime);
-
-    ofstream frameOut("bvh-frame.txt");
-    for (VectorXd &v: bvh.frameToEulerAngle(positions))
-	frameOut << v.transpose() << endl;
-    frameOut.close();
+	velocities.push_back(skeleton->getPositionDifferences(positions[i + 1], positions[i]) / frameTime);
 
     coder::array<double, 1> x, y;
     vector<VectorXd> tmp(velocities);
@@ -118,7 +101,7 @@ int main(int argc, char* argv[])
     c_butterworth_terminate();
 
     for (size_t i = 0; i < velocities.size() - 1; ++i)
-	accelerations.push_back(bvh.skeleton->getVelocityDifferences(velocities[i + 1], velocities[i]) / frameTime);
+	accelerations.push_back(skeleton->getVelocityDifferences(velocities[i + 1], velocities[i]) / frameTime);
 
     vector<vector<string>> contactNodes;
     ifstream input(contactNodesFilename);
@@ -138,10 +121,11 @@ int main(int argc, char* argv[])
     ofstream fout("forces.txt");
     ofstream vout("velocities.txt");
     ofstream aout("accelerations.txt");
+    ofstream cfout("contact_forces.txt");
 
     for (size_t i = 0; i < accelerations.size(); ++i)
     {
-	cout << "frame " << i << endl;
+	//cout << "frame " << i << endl;
 	skeleton->setPositions(positions[i]);
 	skeleton->setVelocities(velocities[i]);
 	skeleton->setAccelerations(accelerations[i]);
@@ -172,7 +156,17 @@ int main(int argc, char* argv[])
 	    VectorXd w = Jt.topRows(6).inverse() *  (M * qddot + C).topRows(6);
 	    VectorXd Q = M * qddot + C - Jt * w;
 	    fout << Q.transpose() << endl;
-	    cout << w.transpose() << endl;
+	    //cout << w.transpose() << endl;
+	    Vector3d tau = w.head(3);
+	    Vector3d f = w.tail(3);
+	    Vector3d a = tau.cross(f) / f.dot(f);
+	    Vector3d com = skeleton->getBodyNode(contactNodes[i][0])->getCOM();
+	    double rz = groundOffset - com.z();
+	    double tfz = rz - a.z();
+	    double t = tfz / f.z();
+	    Vector3d r = a + t * f;
+	    Vector3d p = com + r;
+	    cfout << p.transpose() << " " << f.transpose() << endl;
 	}
 	else if (contactNodes[i].size() > 1)
 	{
@@ -239,13 +233,29 @@ int main(int argc, char* argv[])
 		Q -= Jt[i] * w[i];
 	    fout << Q.transpose() << endl;
 	    for (size_t i = 0; i < n; ++i)
-		cout << w[i].transpose() << endl;
+		//cout << w[i].transpose() << endl;
+	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
+	    {
+		Vector3d tau = w[j].head(3);
+		//tau = Vector3d::Zero();
+		Vector3d f = w[j].tail(3);
+		Vector3d a = tau.cross(f) / f.dot(f);
+		Vector3d com = skeleton->getBodyNode(contactNodes[i][j])->getCOM();
+		double rz = groundOffset - com.z();
+		double tfz = rz - a.z();
+		double t = tfz / f.z();
+		Vector3d r = a + t * f;
+		Vector3d p = com + r;
+		cfout << p.transpose() << " " << f.transpose() << " ";
+	    }
+	    cfout << endl;
 	}
 	else
 	{
 	    VectorXd Q = M * qddot + C;
 	    Q.head(6) = VectorXd::Zero(6);
 	    fout << Q.transpose() << endl;
+	    cfout << endl;
 	}
 
 	pout << positions[i].transpose() << endl;
@@ -256,6 +266,7 @@ int main(int argc, char* argv[])
     fout.close();
     vout.close();
     aout.close();
+    cfout.close();
 
     return 0;
 }

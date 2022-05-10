@@ -10,12 +10,16 @@
 #include <Python.h>
 #include "SimCharacter.h"
 #include "PyUtil.h"
+#include "IOUtil.h"
 
 int frame = 0;
 Eigen::MatrixXd positions;
 SimCharacter character("data/character.json");
 osg::ref_ptr<osg::Geometry> mesh;
 std::vector<Eigen::MatrixXd> vertices;
+std::vector<Eigen::VectorXd> pointIndices;
+std::vector<Eigen::VectorXd> contacts;
+osg::ref_ptr<osg::Group> group;
 
 class TestWidget : public dart::gui::osg::ImGuiWidget
 {
@@ -36,10 +40,25 @@ public:
 	if (frame < vertices.size())
 	{
 	    osg::Vec3Array* vertexArray = static_cast<osg::Vec3Array*>(mesh->getVertexArray());
+	    osg::Vec4Array* colorArray = static_cast<osg::Vec4Array*>(mesh->getColorArray());
 	    for (int i = 0; i < vertices[0].rows(); ++i)
 	    {
 		Eigen::VectorXd v = vertices[frame].row(i);
 		(*vertexArray)[i] = osg::Vec3(v[0], v[1], v[2]);
+		(*colorArray)[i] = osg::Vec4(1.0, 1.0, 1.0, 1.0);
+	    }
+	    for (int i = 0; i < pointIndices[frame].rows(); ++i)
+	    {
+		(*colorArray)[pointIndices[frame][i]] = osg::Vec4(1.0, 0.0, 0.0, 1.0);
+	    }
+	    group->removeChildren(0, group->getNumChildren());
+	    for (size_t i = 0; i < contacts[frame].rows(); i += 6)
+	    {
+		Eigen::VectorXd v = contacts[frame];
+		osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable;
+		shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
+		shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+		group->addChild(shape);
 	    }
 	    mesh->dirtyDisplayList();
 	    mesh->dirtyBound();
@@ -57,7 +76,7 @@ private:
 
 int main(int argc, char *argv[])
 {
-    const char *fname = "data/0005_Walking001_poses.npz";
+    char *fname = argv[1];
     //Py_SetProgramName(argv[0]);
     Py_Initialize();
     //PySys_SetArgv(argc, argv);
@@ -147,6 +166,10 @@ int main(int argc, char *argv[])
     positions.middleCols(3, 3) = trans;
     positions.rightCols(poses.cols() - 3) = poses.rightCols(poses.cols() - 3);
 
+    pointIndices = readVectorXdListFrom("contact-point-indices.txt");
+
+    for (size_t i = 0; i < character.skeleton->getNumDofs(); ++i)
+	std::cout << i << "\t" << character.skeleton->getDof(i)->getName() << std::endl;
     dart::simulation::WorldPtr world = dart::simulation::World::create();
     world->addSkeleton(character.skeleton);
     character.skeleton->setPositions(positions.row(frame));
@@ -161,6 +184,10 @@ int main(int argc, char *argv[])
 	Eigen::VectorXd v = vertices[0].row(i);
 	vertexArray->push_back(osg::Vec3(v[0], v[1], v[2]));
 	colorArray->push_back(osg::Vec4(1.0, 1.0, 1.0, 1.0));
+    }
+    for (int i = 0; i < pointIndices[0].rows(); ++i)
+    {
+	(*colorArray)[pointIndices[0][i]] = osg::Vec4(1.0, 0.0, 0.0, 1.0);
     }
     for (int i = 0; i < faces.rows(); ++i)
     {
@@ -179,6 +206,18 @@ int main(int argc, char *argv[])
     osg::ref_ptr<osg::Geode> geoNode = new osg::Geode();
     geoNode->addDrawable(mesh);
     worldNode->addChild(geoNode);
+
+    contacts = readVectorXdListFrom("contact_forces.txt");
+    group = new osg::Group();
+    for (size_t i = 0; i < contacts[0].rows(); i += 6)
+    {
+	Eigen::VectorXd v = contacts[0];
+	osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable;
+	shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
+	shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+	group->addChild(shape);
+    }
+    worldNode->addChild(group);
 
     viewer->addWorldNode(worldNode);
     viewer->getImGuiHandler()->addWidget(std::make_shared<TestWidget>(viewer, world));
