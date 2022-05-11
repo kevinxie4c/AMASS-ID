@@ -13,6 +13,7 @@
 #include "IOUtil.h"
 
 int frame = 0;
+double forceScale = 0.005;
 Eigen::MatrixXd positions;
 SimCharacter character("data/character.json");
 osg::ref_ptr<osg::Geometry> mesh;
@@ -20,6 +21,23 @@ std::vector<Eigen::MatrixXd> vertices;
 std::vector<Eigen::VectorXd> pointIndices;
 std::vector<Eigen::VectorXd> contacts;
 osg::ref_ptr<osg::Group> group;
+
+osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end)
+{
+    osg::Vec3 dir = end - start;
+    osg::ref_ptr<osg::MatrixTransform> node = new osg::MatrixTransform();
+    osg::ref_ptr<osg::ShapeDrawable> cylinder = new osg::ShapeDrawable();
+    cylinder->setShape(new osg::Cylinder(osg::Vec3(0, 0, dir.length() / 2), 0.01, dir.length()));
+    cylinder->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+    osg::ref_ptr<osg::ShapeDrawable> cone = new osg::ShapeDrawable();
+    cone->setShape(new osg::Cone(osg::Vec3(0, 0, dir.length()), 0.02, 0.04));
+    cone->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+    node->addChild(cylinder);
+    node->addChild(cone);
+    dir.normalize();
+    node->setMatrix(osg::Matrix::translate(start) * osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir));
+    return node;
+}
 
 class TestWidget : public dart::gui::osg::ImGuiWidget
 {
@@ -43,7 +61,7 @@ public:
 	    osg::Vec4Array* colorArray = static_cast<osg::Vec4Array*>(mesh->getColorArray());
 	    for (int i = 0; i < vertices[0].rows(); ++i)
 	    {
-		Eigen::VectorXd v = vertices[frame].row(i);
+		const Eigen::VectorXd &v = vertices[frame].row(i);
 		(*vertexArray)[i] = osg::Vec3(v[0], v[1], v[2]);
 		(*colorArray)[i] = osg::Vec4(1.0, 1.0, 1.0, 1.0);
 	    }
@@ -54,11 +72,10 @@ public:
 	    group->removeChildren(0, group->getNumChildren());
 	    for (size_t i = 0; i < contacts[frame].rows(); i += 6)
 	    {
-		Eigen::VectorXd v = contacts[frame];
-		osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable;
-		shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
-		shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
-		group->addChild(shape);
+		const Eigen::VectorXd &v = contacts[frame];
+		osg::Vec3 point = osg::Vec3(v[i + 0], v[i + 1], v[i + 2]);
+		osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
+		group->addChild(makeArrow(point, point + force * forceScale));
 	    }
 	    mesh->dirtyDisplayList();
 	    mesh->dirtyBound();
@@ -76,6 +93,11 @@ private:
 
 int main(int argc, char *argv[])
 {
+    if (argc != 2)
+    {
+	std::cout << "usage: " << argv[0] << " pose_file" << std::endl;
+	return 0;
+    }
     char *fname = argv[1];
     //Py_SetProgramName(argv[0]);
     Py_Initialize();
@@ -168,8 +190,10 @@ int main(int argc, char *argv[])
 
     pointIndices = readVectorXdListFrom("contact-point-indices.txt");
 
+    /*
     for (size_t i = 0; i < character.skeleton->getNumDofs(); ++i)
 	std::cout << i << "\t" << character.skeleton->getDof(i)->getName() << std::endl;
+    */
     dart::simulation::WorldPtr world = dart::simulation::World::create();
     world->addSkeleton(character.skeleton);
     character.skeleton->setPositions(positions.row(frame));
@@ -181,7 +205,7 @@ int main(int argc, char *argv[])
     osg::ref_ptr<osg::DrawElementsUInt> indexArray = new osg::DrawElementsUInt(GL_TRIANGLES);
     for (int i = 0; i < vertices[0].rows(); ++i)
     {
-	Eigen::VectorXd v = vertices[0].row(i);
+	const Eigen::VectorXd &v = vertices[0].row(i);
 	vertexArray->push_back(osg::Vec3(v[0], v[1], v[2]));
 	colorArray->push_back(osg::Vec4(1.0, 1.0, 1.0, 1.0));
     }
@@ -191,7 +215,7 @@ int main(int argc, char *argv[])
     }
     for (int i = 0; i < faces.rows(); ++i)
     {
-	Eigen::VectorXd v = faces.row(i);
+	const Eigen::VectorXd &v = faces.row(i);
 	indexArray->push_back(v[0]);
 	indexArray->push_back(v[1]);
 	indexArray->push_back(v[2]);
@@ -211,11 +235,10 @@ int main(int argc, char *argv[])
     group = new osg::Group();
     for (size_t i = 0; i < contacts[0].rows(); i += 6)
     {
-	Eigen::VectorXd v = contacts[0];
-	osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable;
-	shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
-	shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
-	group->addChild(shape);
+	const Eigen::VectorXd &v = contacts[0];
+	osg::Vec3 point = osg::Vec3(v[i + 0], v[i + 1], v[i + 2]);
+	osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
+	group->addChild(makeArrow(point, point + force * forceScale));
     }
     worldNode->addChild(group);
 
