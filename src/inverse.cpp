@@ -91,8 +91,7 @@ int main(int argc, char* argv[])
     x.set_size(velocities.size());
     size_t ndof = skeleton->getDofs().size();
     for (size_t i = 0; i < ndof; ++i)
-    {
-	for (int j = 0; j < x.size(0); ++j)
+    { for (int j = 0; j < x.size(0); ++j)
 	    x[j] = velocities[j][i];
 	c_butterworth(x, cutoffFreq, 100, y);
 	for (int j = 0; j < x.size(0); ++j)
@@ -104,16 +103,23 @@ int main(int argc, char* argv[])
 	accelerations.push_back(skeleton->getVelocityDifferences(velocities[i + 1], velocities[i]) / frameTime);
 
     vector<vector<string>> contactNodes;
+    vector<vector<Vector3d>> contactPoints;
     ifstream input(contactNodesFilename);
     string line;
     while (getline(input, line))
     {
 	stringstream strStream(line);
-	vector<string> list;
+	vector<string> nodeList;
+	vector<Vector3d> pointList;
 	string s;
-	while (strStream >> s)
-	    list.push_back(s);
-	contactNodes.push_back(list);
+	double x, y, z;
+	while (strStream >> s >> x >> y >> z)
+	{
+	    nodeList.push_back(s);
+	    pointList.push_back(Vector3d(x, y, z));
+	}
+	contactNodes.push_back(nodeList);
+	contactPoints.push_back(pointList);
     }
     input.close();
 
@@ -123,14 +129,24 @@ int main(int argc, char* argv[])
     ofstream aout("accelerations.txt");
     ofstream cfout("contact_forces.txt");
 
+    double mu = 1;
+    
     for (size_t i = 0; i < accelerations.size(); ++i)
     {
 	//cout << "frame " << i << endl;
 	skeleton->setPositions(positions[i]);
 	skeleton->setVelocities(velocities[i]);
 	skeleton->setAccelerations(accelerations[i]);
+	//VectorXd v = VectorXd::Zero(ndof);
+	//skeleton->setPositions(v);
+	//skeleton->setVelocities(v);
+	//skeleton->setAccelerations(v);
+
 	MatrixXd M = skeleton->getMassMatrix();
 	MatrixXd C = skeleton->getCoriolisAndGravityForces();
+	//std::cout << C << std::endl;
+	//MatrixXd G = skeleton->getGravityForces();
+	//std::cout << G << std::endl;
 
 	// TODO: confirm the following computation of dL is correct
 	Eigen::Vector3d dL = Eigen::Vector3d::Zero(); // rate of angular momentum at center of mass
@@ -149,111 +165,142 @@ int main(int argc, char* argv[])
 
 	VectorXd qddot = accelerations[i];
 
-	if (contactNodes[i].size() == 1)
+	
+	if (contactNodes[i].size() > 0)
 	{
-	    MatrixXd J = skeleton->getWorldJacobian(skeleton->getBodyNode(contactNodes[i][0]), skeleton->getBodyNode(contactNodes[i][0])->getLocalCOM());
-	    MatrixXd Jt = J.transpose();
-	    VectorXd w = Jt.topRows(6).inverse() *  (M * qddot + C).topRows(6);
-	    VectorXd Q = M * qddot + C - Jt * w;
-	    fout << Q.transpose() << endl;
-	    //cout << w.transpose() << endl;
-	    Vector3d tau = w.head(3);
-	    Vector3d f = w.tail(3);
-	    Vector3d a = tau.cross(f) / f.dot(f);
-	    Vector3d com = skeleton->getBodyNode(contactNodes[i][0])->getCOM();
-	    double rz = groundOffset - com.z();
-	    double tfz = rz - a.z();
-	    double t = tfz / f.z();
-	    Vector3d r = a + t * f;
-	    Vector3d p = com + r;
-	    cfout << p.transpose() << " " << f.transpose() << endl;
-	}
-	else if (contactNodes[i].size() > 1)
-	{
-	    vector<MatrixXd> Jt;
-	    vector<VectorXd> w;
-	    for (string &name: contactNodes[i])
+	    size_t m = ndof;
+	    size_t n = contactNodes[i].size() * 5;
+	    /*
+	     * Optimize contact force lambda by minimizing
+	     *	    ||(M * qddot + C - Jt * B1 * B2 * lambda)_1:6||
+	     * By computing the L2 norm, this becomes a QP problem:
+	     *	    min 1/2 x^T * A * x - b^T * x
+	     * where
+	     *	    A = A1^T * A1
+	     *	    b = a^T * A1
+	     *	    A1 = Jt * B1 * B2
+	     *	    a = M * qddot + C
+	     */
+	    MatrixXd emA(m, n);	// A1
+	    vector<MatrixXd> B2list;
+	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
 	    {
-		Jt.push_back(skeleton->getWorldJacobian(skeleton->getBodyNode(name), skeleton->getBodyNode(name)->getLocalCOM()).transpose());
-		w.push_back(VectorXd(6));
+		const BodyNode *bn = skeleton->getBodyNode(contactNodes[i][j]);
+		const Vector3d &point = contactPoints[i][j];
+		Isometry3d transform = bn->getWorldTransform();
+		MatrixXd Jt = skeleton->getWorldJacobian(bn, transform.inverse() * point).transpose();
+		MatrixXd B1(6, 3);
+		//B1.topRows(3) = dart::math::makeSkewSymmetric(point);
+		//B1.topRows(3) = dart::math::makeSkewSymmetric(transform.inverse() * point);
+		B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform.translation());
+		B1.bottomRows(3) = Matrix3d::Identity();
+		Vector3d normal = Vector3d::UnitZ();
+		Vector3d tangent1 = Vector3d::UnitX();
+		Vector3d tangent2 = Vector3d::UnitY();
+		MatrixXd B2(3, 5);
+		B2.col(0) = normal;
+		B2.col(1) = tangent1;
+		B2.col(2) = tangent2;
+		B2.col(3) = -tangent1;
+		B2.col(4) = -tangent2;
+		B2list.push_back(B2);
+		MatrixXd mat = Jt * B1 * B2;
+		emA.middleCols(j * 5, 5) = mat;
 	    }
-	    size_t n = contactNodes[i].size();
+	    //qddot = VectorXd::Zero(ndof);
+	    //qddot[5] = -9.8;
+	    VectorXd a = (M * qddot + C);
+	    //std::cout << "M" << std::endl;
+	    //std::cout << M << std::endl;
+	    //std::cout << "qddot" << std::endl;
+	    //std::cout << qddot << std::endl;
+	    //std::cout << "M * qddot" << std::endl;
+	    //std::cout << M * qddot << std::endl;
+	    //std::cout << "C" << std::endl;
+	    //std::cout << C << std::endl;
+	    //std::cout << "a" << std::endl;
+	    //std::cout << a << std::endl;
+	    VectorXd a6 = a.topRows(6);
+	    MatrixXd emA6 = emA.topRows(6);
+	    MatrixXd AtA = emA6.transpose() * emA6;
+	    MatrixXd atA = a6.transpose() * emA6;
 	    real_2d_array A;
 	    real_1d_array b;
 	    real_1d_array s;
-	    A.setlength(6 * n, 6 * n);
-	    b.setlength(6 * n);
-	    s.setlength(6 * n);
-	    for (size_t i = 0; i < 6 * n; ++i)
-		for (size_t j = 0; j < 6 * n; ++j)
-		    A[i][j] = 0;
-	    for (size_t i = 0; i < 6 * n; ++i)
+	    A.setlength(n, n);
+	    b.setlength(n);
+	    s.setlength(n);
+	    for (size_t i = 0; i < n; ++i)
 	    {
-		A[i][i] = 1;
-		b[i] = 0;
+		for (size_t j = 0; j < n; ++j)
+		    A[i][j] = AtA(i, j);
+		b[i] = -atA(0, i);
 		s[i] = 1;
 	    }
-	    VectorXd d = M * qddot + C;
-	    //cout << "d:" << endl << d << endl;
 	    real_2d_array c;
 	    integer_1d_array ct;
-	    c.setlength(6, 6 * n + 1);
-	    ct.setlength(6);
-	    for (size_t i = 0; i < n; ++i)
-		for (size_t j = 0; j < 6; ++j)
-		    for (size_t k = 0; k < 6; ++k)
-			c[j][6 * i + k] = Jt[i](j, k);
-	    for (size_t i = 0; i < 6; ++i)
+	    c.setlength(4 * contactNodes[i].size(), n + 1);
+	    ct.setlength(4 * contactNodes[i].size());
+	    for (size_t j = 0; j < 4 * contactNodes[i].size(); ++j)
+		for (size_t k = 0; k < n + 1; ++k)
+		    c[j][k] = 0;
+	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
 	    {
-		c[i][6 * n] = d[i];
-		ct[i] = 0;
+		for (size_t k = 0; k < 4; ++k)
+		{
+		    c[4 * j + k][5 * j + 0] = mu;
+		    c[4 * j + k][5 * j + k + 1] = -1;
+
+		    ct[4 * j + k] = 1;
+		}
+	    }
+	    real_1d_array bndl;
+	    real_1d_array bndu;
+	    bndl.setlength(n);
+	    bndu.setlength(n);
+	    for (size_t i = 0; i < n; ++i)
+	    {
+		bndl[i] = 0;
+		bndu[i] = 1e5;
 	    }
 	    real_1d_array x;
 	    minqpstate state;
 	    minqpreport rep;
-	    minqpcreate(6 * n, state);
+	    minqpcreate(n, state);
 	    minqpsetquadraticterm(state, A);
 	    minqpsetlinearterm(state, b);
+	    //cout << "c" << endl;
+	    //cout << c.tostring(2) << endl;
+	    //cout << "ct" << endl;
+	    //cout << ct.tostring() << endl;
 	    minqpsetlc(state, c, ct);
+	    minqpsetbc(state, bndl, bndu);
 	    minqpsetscale(state, s);
 	    minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
 	    minqpoptimize(state);
 	    minqpresults(state, x, rep);
-	    //cout << "A:" << endl << A.tostring(1).c_str() << endl;
-	    //cout << "b:" << endl << b.tostring(1).c_str() << endl;
-	    //cout << "s:" << endl << s.tostring(1).c_str() << endl;
-	    //cout << "c:" << endl << c.tostring(1).c_str() << endl;
-	    //cout << "ct:" << endl << ct.tostring().c_str() << endl;
-	    //cout << "x:" << endl << x.tostring(1).c_str() << endl;
+
+	    VectorXd lambda(n);
 	    for (size_t i = 0; i < n; ++i)
-		for (size_t j = 0; j < 6; ++j)
-		    w[i][j] = x[6 * i + j];
-	    VectorXd Q = M * qddot + C;
-	    for (size_t i = 0; i < n; ++i)
-		Q -= Jt[i] * w[i];
+		lambda[i] = x[i];
+	    //cout << "lambda" << endl;
+	    //cout << lambda << endl;
+	    //cout << "error1 = " << (lambda.transpose() * AtA * lambda - atA * lambda * 2 + a6.transpose() * a6).cwiseSqrt() << endl; 
+	    VectorXd Q = a - emA * lambda;
+	    //cout << "error2 = " << Q.head(6).norm() << endl; 
 	    fout << Q.transpose() << endl;
-	    for (size_t i = 0; i < n; ++i)
-		//cout << w[i].transpose() << endl;
 	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
 	    {
-		Vector3d tau = w[j].head(3);
-		//tau = Vector3d::Zero();
-		Vector3d f = w[j].tail(3);
-		Vector3d a = tau.cross(f) / f.dot(f);
-		Vector3d com = skeleton->getBodyNode(contactNodes[i][j])->getCOM();
-		double rz = groundOffset - com.z();
-		double tfz = rz - a.z();
-		double t = tfz / f.z();
-		Vector3d r = a + t * f;
-		Vector3d p = com + r;
-		cfout << p.transpose() << " " << f.transpose() << " ";
+		VectorXd lamb = lambda.segment(j * 5, 5);
+		Vector3d f = B2list[j] * lamb;
+		cfout << contactPoints[i][j].transpose() << " " << f.transpose() << " ";
 	    }
 	    cfout << endl;
 	}
 	else
 	{
 	    VectorXd Q = M * qddot + C;
-	    Q.head(6) = VectorXd::Zero(6);
+	    //Q.head(6) = VectorXd::Zero(6);
 	    fout << Q.transpose() << endl;
 	    cfout << endl;
 	}

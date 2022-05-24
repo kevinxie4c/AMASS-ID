@@ -13,7 +13,7 @@
 #include "IOUtil.h"
 
 int frame = 0;
-double forceScale = 0.005;
+double forceScale = 0.002;
 Eigen::MatrixXd positions;
 SimCharacter character("data/character.json");
 osg::ref_ptr<osg::Geometry> mesh;
@@ -35,7 +35,8 @@ osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end)
     node->addChild(cylinder);
     node->addChild(cone);
     dir.normalize();
-    node->setMatrix(osg::Matrix::translate(start) * osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir));
+    //node->setMatrix(osg::Matrix::translate(start) * osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir));
+    node->setMatrix(osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir) * osg::Matrix::translate(start));
     return node;
 }
 
@@ -73,8 +74,17 @@ public:
 	    for (size_t i = 0; i < contacts[frame].rows(); i += 6)
 	    {
 		const Eigen::VectorXd &v = contacts[frame];
+		osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
+		shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
+		shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+		group->addChild(shape);
+		//shape = new osg::ShapeDrawable();
+		//shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0] + forceScale * v[i + 3], v[i + 1] + forceScale * v[i + 4], v[i + 2] + forceScale * v[i + 5]), 0.02));
+		//shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+		//group->addChild(shape);
 		osg::Vec3 point = osg::Vec3(v[i + 0], v[i + 1], v[i + 2]);
 		osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
+		//std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
 		group->addChild(makeArrow(point, point + force * forceScale));
 	    }
 	    mesh->dirtyDisplayList();
@@ -236,8 +246,18 @@ int main(int argc, char *argv[])
     for (size_t i = 0; i < contacts[0].rows(); i += 6)
     {
 	const Eigen::VectorXd &v = contacts[0];
+	osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
+	shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
+	shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+	group->addChild(shape);
+	//shape = new osg::ShapeDrawable();
+	//shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0] + forceScale * v[i + 3], v[i + 1] + forceScale * v[i + 4], v[i + 2] + forceScale * v[i + 5]), 0.02));
+	//shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+	//group->addChild(shape);
 	osg::Vec3 point = osg::Vec3(v[i + 0], v[i + 1], v[i + 2]);
 	osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
+	//force = osg::Vec3(0, 0, 50);
+	//std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
 	group->addChild(makeArrow(point, point + force * forceScale));
     }
     worldNode->addChild(group);
