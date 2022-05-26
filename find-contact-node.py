@@ -90,21 +90,21 @@ for i in range(0, frame_length - 1):
             lFoot.append(pts[j])
         if int(x) == 5 or int(x) == 8 or int(x) == 11:
             rFoot.append(pts[j])
-    contact_nodes = []
+    #contact_nodes = []
     if len(lFoot) > 0:
-        v = np.mean(np.stack(lFoot), axis=0)
-        contact_nodes.append('lFoot {} {} {}'.format(v[0], v[1], v[2]))
-        #f_node.write('lFoot {} '.format(len(lFoot)))
-        #for v in lFoot:
-        #    f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
+        #v = np.mean(np.stack(lFoot), axis=0)
+        #contact_nodes.append('lFoot {} {} {}'.format(v[0], v[1], v[2]))
+        f_node.write('lFoot {} '.format(len(lFoot)))
+        for v in lFoot:
+            f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
     if len(rFoot) > 0:
-        v = np.mean(np.stack(rFoot), axis=0)
-        contact_nodes.append('rFoot {} {} {}'.format(v[0], v[1], v[2]))
-        #f_node.write('rFoot {} '.format(len(rFoot)))
-        #for v in rFoot:
-        #    f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
-    f_node.write(' '.join(contact_nodes) + "\n")
-    #f_node.write("\n")
+        #v = np.mean(np.stack(rFoot), axis=0)
+        #contact_nodes.append('rFoot {} {} {}'.format(v[0], v[1], v[2]))
+        f_node.write('rFoot {} '.format(len(rFoot)))
+        for v in rFoot:
+            f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
+    #f_node.write(' '.join(contact_nodes) + "\n")
+    f_node.write("\n")
 
 f_node.close()
 f_pt_idx.close() 

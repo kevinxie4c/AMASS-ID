@@ -14,6 +14,7 @@
 
 int frame = 0;
 double forceScale = 0.002;
+double epsilon = 0.00001;
 Eigen::MatrixXd positions;
 SimCharacter character("data/character.json");
 osg::ref_ptr<osg::Geometry> mesh;
@@ -36,6 +37,8 @@ osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end)
     node->addChild(cone);
     dir.normalize();
     //node->setMatrix(osg::Matrix::translate(start) * osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir));
+    //std::cout << "dir " << dir[0] << " " << dir[1] << " " << dir[2] << std::endl;
+    //std::cout << "start " << start[0] << " " << start[1] << " " << start[2] << std::endl;
     node->setMatrix(osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir) * osg::Matrix::translate(start));
     return node;
 }
@@ -74,10 +77,10 @@ public:
 	    for (size_t i = 0; i < contacts[frame].rows(); i += 6)
 	    {
 		const Eigen::VectorXd &v = contacts[frame];
-		osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
-		shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
-		shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
-		group->addChild(shape);
+		//osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
+		//shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
+		//shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+		//group->addChild(shape);
 		//shape = new osg::ShapeDrawable();
 		//shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0] + forceScale * v[i + 3], v[i + 1] + forceScale * v[i + 4], v[i + 2] + forceScale * v[i + 5]), 0.02));
 		//shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
@@ -85,7 +88,8 @@ public:
 		osg::Vec3 point = osg::Vec3(v[i + 0], v[i + 1], v[i + 2]);
 		osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
 		//std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
-		group->addChild(makeArrow(point, point + force * forceScale));
+		if (force.length() > epsilon)
+		    group->addChild(makeArrow(point, point + force * forceScale));
 	    }
 	    mesh->dirtyDisplayList();
 	    mesh->dirtyBound();
@@ -97,6 +101,32 @@ private:
 
     osg::ref_ptr<dart::gui::osg::ImGuiViewer> mViewer;
     dart::simulation::WorldPtr mWorld;
+
+};
+
+class CustomEventHandler: public osgGA::GUIEventHandler
+{
+public:
+
+    CustomEventHandler(osg::ref_ptr<dart::gui::osg::ImGuiViewer> viewer) : mViewer(viewer) {}
+
+    virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&) override
+    {
+	if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
+	{
+	    if (ea.getKey() == 'r')
+	    {
+		if (mViewer->isRecording())
+		    mViewer->pauseRecording();
+		else
+		    mViewer->record("output");
+		return true;
+	    }
+	}
+	return false;
+    }
+
+    osg::ref_ptr<dart::gui::osg::ImGuiViewer> mViewer;
 
 };
 
@@ -246,10 +276,10 @@ int main(int argc, char *argv[])
     for (size_t i = 0; i < contacts[0].rows(); i += 6)
     {
 	const Eigen::VectorXd &v = contacts[0];
-	osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
-	shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
-	shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
-	group->addChild(shape);
+	//osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
+	//shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
+	//shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+	//group->addChild(shape);
 	//shape = new osg::ShapeDrawable();
 	//shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0] + forceScale * v[i + 3], v[i + 1] + forceScale * v[i + 4], v[i + 2] + forceScale * v[i + 5]), 0.02));
 	//shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
@@ -258,7 +288,8 @@ int main(int argc, char *argv[])
 	osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
 	//force = osg::Vec3(0, 0, 50);
 	//std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
-	group->addChild(makeArrow(point, point + force * forceScale));
+	if (force.length() > epsilon)
+	    group->addChild(makeArrow(point, point + force * forceScale));
     }
     worldNode->addChild(group);
 
@@ -269,6 +300,8 @@ int main(int argc, char *argv[])
     osg::Vec3d center(0, 0, 0);
     osg::Vec3d up(0, 1, 0);
     viewer->getCameraManipulator()->setHomePosition(eye, center, up);
+    viewer->addEventHandler(new CustomEventHandler(viewer));
+    //viewer->record("output");
     viewer->run();
 
     if (Py_FinalizeEx() < 0) {

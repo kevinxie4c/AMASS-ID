@@ -112,14 +112,19 @@ int main(int argc, char* argv[])
 	vector<string> nodeList;
 	vector<Vector3d> pointList;
 	string s;
-	double x, y, z;
-	while (strStream >> s >> x >> y >> z)
+	size_t n;
+	if (strStream >> s >> n)
 	{
-	    nodeList.push_back(s);
-	    pointList.push_back(Vector3d(x, y, z));
+	    double x, y, z;
+	    for (size_t i = 0; i < n; ++i)
+	    {
+		strStream >> x >> y >> z;
+		nodeList.push_back(s);
+		pointList.push_back(Vector3d(x, y, z));
+	    }
+	    contactNodes.push_back(nodeList);
+	    contactPoints.push_back(pointList);
 	}
-	contactNodes.push_back(nodeList);
-	contactPoints.push_back(pointList);
     }
     input.close();
 
@@ -128,12 +133,15 @@ int main(int argc, char* argv[])
     ofstream vout("velocities.txt");
     ofstream aout("accelerations.txt");
     ofstream cfout("contact_forces.txt");
+    ofstream eout("errors.txt");
 
     double mu = 1;
+    double reg = 10;
     
-    for (size_t i = 0; i < accelerations.size(); ++i)
+    //for (size_t i = 0; i < accelerations.size(); ++i)
+    for (size_t i = 0; i < 500; ++i)
     {
-	//cout << "frame " << i << endl;
+	cout << "frame " << i << endl;
 	skeleton->setPositions(positions[i]);
 	skeleton->setVelocities(velocities[i]);
 	skeleton->setAccelerations(accelerations[i]);
@@ -225,31 +233,41 @@ int main(int argc, char* argv[])
 	    MatrixXd AtA = emA6.transpose() * emA6;
 	    MatrixXd atA = a6.transpose() * emA6;
 	    real_2d_array A;
+	    //sparsematrix A;
 	    real_1d_array b;
 	    real_1d_array s;
 	    A.setlength(n, n);
+	    //sparsecreate(n, n, 0, A);
 	    b.setlength(n);
 	    s.setlength(n);
+	    AtA += MatrixXd::Identity(n, n) * reg / n;
 	    for (size_t i = 0; i < n; ++i)
 	    {
 		for (size_t j = 0; j < n; ++j)
 		    A[i][j] = AtA(i, j);
+		//for (size_t j = i; j < n; ++j)
+		//    if (abs(AtA(i, j)) > 1e-8)
+		//	sparseset(A, i, j, AtA(i, j));
 		b[i] = -atA(0, i);
 		s[i] = 1;
 	    }
-	    real_2d_array c;
+	    //real_2d_array c;
+	    sparsematrix c;
 	    integer_1d_array ct;
-	    c.setlength(4 * contactNodes[i].size(), n + 1);
+	    //c.setlength(4 * contactNodes[i].size(), n + 1);
+	    sparsecreate(4 * contactNodes[i].size(), n + 1, 0, c);
 	    ct.setlength(4 * contactNodes[i].size());
-	    for (size_t j = 0; j < 4 * contactNodes[i].size(); ++j)
-		for (size_t k = 0; k < n + 1; ++k)
-		    c[j][k] = 0;
+	    //for (size_t j = 0; j < 4 * contactNodes[i].size(); ++j)
+	    //    for (size_t k = 0; k < n + 1; ++k)
+	    //    c[j][k] = 0;
 	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
 	    {
 		for (size_t k = 0; k < 4; ++k)
 		{
-		    c[4 * j + k][5 * j + 0] = mu;
-		    c[4 * j + k][5 * j + k + 1] = -1;
+		    //c[4 * j + k][5 * j + 0] = mu;
+		    //c[4 * j + k][5 * j + k + 1] = -1;
+		    sparseset(c, 4 * j + k, 5 * j + 0, mu);
+		    sparseset(c, 4 * j + k, 5 * j + k + 1, -1);
 
 		    ct[4 * j + k] = 1;
 		}
@@ -268,12 +286,14 @@ int main(int argc, char* argv[])
 	    minqpreport rep;
 	    minqpcreate(n, state);
 	    minqpsetquadraticterm(state, A);
+	    //minqpsetquadratictermsparse(state, A, true);
 	    minqpsetlinearterm(state, b);
 	    //cout << "c" << endl;
 	    //cout << c.tostring(2) << endl;
 	    //cout << "ct" << endl;
 	    //cout << ct.tostring() << endl;
-	    minqpsetlc(state, c, ct);
+	    //minqpsetlc(state, c, ct);
+	    minqpsetlcsparse(state, c, ct, 4 * contactNodes[i].size());
 	    minqpsetbc(state, bndl, bndu);
 	    minqpsetscale(state, s);
 	    minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
@@ -288,6 +308,7 @@ int main(int argc, char* argv[])
 	    //cout << "error1 = " << (lambda.transpose() * AtA * lambda - atA * lambda * 2 + a6.transpose() * a6).cwiseSqrt() << endl; 
 	    VectorXd Q = a - emA * lambda;
 	    //cout << "error2 = " << Q.head(6).norm() << endl; 
+	    eout << Q.head(6).norm() << endl; 
 	    fout << Q.transpose() << endl;
 	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
 	    {
@@ -314,6 +335,7 @@ int main(int argc, char* argv[])
     vout.close();
     aout.close();
     cfout.close();
+    eout.close();
 
     return 0;
 }

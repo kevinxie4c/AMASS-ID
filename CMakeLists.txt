@@ -31,4 +31,4 @@ add_executable(inverse.out src/inverse.cpp src/SimCharacter.cpp src/PyUtil.cpp s
 target_link_libraries(inverse.out m stdc++ dart dart-collision-ode assimp boost_system ${Python3_LINK_OPTIONS})
 
 add_executable(CharacterViewer.out src/CharacterViewer.cpp src/SimCharacter.cpp src/PyUtil.cpp src/IOUtil.cpp)
-target_link_libraries(CharacterViewer.out stdc++ dart dart-gui-osg osg osgViewer osgUtil assimp boost_system dart-external-imgui ${Python3_LINK_OPTIONS})
+target_link_libraries(CharacterViewer.out stdc++ dart dart-gui-osg osg osgViewer osgUtil osgGA assimp boost_system dart-external-imgui ${Python3_LINK_OPTIONS})
