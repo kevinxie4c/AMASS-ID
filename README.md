@@ -52,6 +52,7 @@ usage: find-contact-node.py filename.npz [outdir]
 ```
 and `inverse.out`
 ```
+usage: ./inverse.out [options] pose_file contact_file
 
 options:
 -j --char_file=string
