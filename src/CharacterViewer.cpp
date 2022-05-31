@@ -137,6 +137,7 @@ void printUsage(char * prgname)
     std::cout << std::endl;
     std::cout << "options:" << std::endl;
     std::cout << "-j --char_file=string" << std::endl;
+    std::cout << "-o --outdir=string" << std::endl;
 }
 
 int main(int argc, char *argv[])
