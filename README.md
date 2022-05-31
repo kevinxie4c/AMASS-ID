@@ -1,3 +1,8 @@
+## Introduction
+
+Tools for performing inverse dynamics on [AMASS data](https://amass.is.tue.mpg.de).
+![demo](/demo.png)
+
 ## Dependencies
 
 [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
@@ -15,6 +20,7 @@ cmake .
 make
 ```
 This will generate `inverse.out`, `CharacterViewer.out` in the current working directory.
+
 
 ## Usage
 
