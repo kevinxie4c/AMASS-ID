@@ -1,8 +1,18 @@
 forces = load('forces.txt');
+error = load('errors.txt');
 t = 1:1/1200:100;
 len = 400;
-plot(t(1:len),forces(1:len,10),t(1:len),forces(1:len,22), 'LineWidth', 3);
+
+yyaxis left
+plot(t(1:len),forces(1:len,10), 'r-', 'LineWidth', 3);
+hold on
+plot(t(1:len),forces(1:len,22), 'g-', 'LineWidth', 3);
 xlabel('time (s)')
 ylabel('torque (N \cdot m)')
-legend('Left knee', 'Right knee')
+
+yyaxis right
+plot(t(1:len), error(1:len), 'b-', 'LineWidth', 3);
+ylabel('error');
+
+legend('Left knee', 'Right knee', 'error')
 title('Torques on knees')

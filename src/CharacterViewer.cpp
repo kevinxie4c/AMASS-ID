@@ -3,6 +3,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <getopt.h>
 #include <dart/dart.hpp>
 #include <dart/gui/osg/osg.hpp>
 #include <dart/external/imgui/imgui.h>
@@ -16,7 +17,7 @@ int frame = 0;
 double forceScale = 0.002;
 double epsilon = 0.00001;
 Eigen::MatrixXd positions;
-SimCharacter character("data/character.json");
+dart::dynamics::SkeletonPtr skeleton;
 osg::ref_ptr<osg::Geometry> mesh;
 std::vector<Eigen::MatrixXd> vertices;
 std::vector<Eigen::VectorXd> pointIndices;
@@ -58,7 +59,7 @@ public:
 	ImGui::Begin("Control");
 	//ImGui::SliderInt("frame", &frame, 0, positions.rows() - 1);
 	ImGui::SliderInt("frame", &frame, 0, 499);
-	character.skeleton->setPositions(positions.row(frame));
+	skeleton->setPositions(positions.row(frame));
 	if (frame < vertices.size())
 	{
 	    osg::Vec3Array* vertexArray = static_cast<osg::Vec3Array*>(mesh->getVertexArray());
@@ -130,15 +131,58 @@ public:
 
 };
 
+void printUsage(char * prgname)
+{
+    std::cout << "usage: " << prgname << " pose_file" << std::endl;
+    std::cout << std::endl;
+    std::cout << "options:" << std::endl;
+    std::cout << "-j --char_file=string" << std::endl;
+}
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    std::string jsonFilename = "data/character.json";
+    std::string poseFilename;
+    std::string outdir = "output";
+
+    while (1)
     {
-	std::cout << "usage: " << argv[0] << " pose_file" << std::endl;
-	return 0;
+	int c;
+	static struct option long_options[] =
+	{
+	    { "char_file", required_argument, NULL, 'j' },
+	    { "outdir", required_argument, NULL, 'o' },
+	    { 0, 0, 0, 0 }
+	};
+	int option_index = 0;
+
+	c = getopt_long(argc, argv, "f:c:g:", long_options, &option_index);
+	if (c == -1)
+        break;
+
+	switch (c)
+	{
+	    case 'j':
+		jsonFilename = optarg;
+		break;
+	    case 'o':
+		outdir = optarg;
+		break;
+	    default:
+		printUsage(argv[0]);
+		exit(0);
+	}
     }
-    char *fname = argv[1];
+
+    if (optind + 1 == argc)
+    {
+	poseFilename = argv[optind];
+    }
+    else
+    {
+	printUsage(argv[0]);
+	exit(0);
+    }
     //Py_SetProgramName(argv[0]);
     Py_Initialize();
     //PySys_SetArgv(argc, argv);
@@ -146,7 +190,7 @@ int main(int argc, char *argv[])
 		       "sys.path.append(\".\")\n"
                        "print('python version:', sys.version)\n");
 
-    PyObject *pDict = load_npz(fname);
+    PyObject *pDict = load_npz(poseFilename);
     //print_py_obj(pDict);
     PyObject *npa;
     npa = PyMapping_GetItemString(pDict, "trans");
@@ -172,7 +216,7 @@ int main(int argc, char *argv[])
 	pFunc = PyObject_GetAttrString(pModule, func);
 	if (pFunc && PyCallable_Check(pFunc))
 	{
-	    pValue = PyUnicode_FromString(fname);
+	    pValue = PyUnicode_FromString(poseFilename.c_str());
 	    pArgs = PyTuple_New(1);
 	    PyTuple_SetItem(pArgs, 0, pValue);
 	    pValue = PyObject_CallObject(pFunc, pArgs);
@@ -228,12 +272,14 @@ int main(int argc, char *argv[])
     positions.middleCols(3, 3) = trans;
     positions.rightCols(poses.cols() - 3) = poses.rightCols(poses.cols() - 3);
 
-    pointIndices = readVectorXdListFrom("contact-point-indices.txt");
+    pointIndices = readVectorXdListFrom(outdir + "/contact_point_indices.txt");
 
     /*
     for (size_t i = 0; i < character.skeleton->getNumDofs(); ++i)
 	std::cout << i << "\t" << character.skeleton->getDof(i)->getName() << std::endl;
     */
+    SimCharacter character(jsonFilename);
+    skeleton = character.skeleton;
     dart::simulation::WorldPtr world = dart::simulation::World::create();
     world->addSkeleton(character.skeleton);
     character.skeleton->setPositions(positions.row(frame));
@@ -271,7 +317,7 @@ int main(int argc, char *argv[])
     geoNode->addDrawable(mesh);
     worldNode->addChild(geoNode);
 
-    contacts = readVectorXdListFrom("contact_forces.txt");
+    contacts = readVectorXdListFrom(outdir + "/contact_forces.txt");
     group = new osg::Group();
     for (size_t i = 0; i < contacts[0].rows(); i += 6)
     {

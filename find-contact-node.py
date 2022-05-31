@@ -8,12 +8,15 @@ from human_body_prior.body_model.body_model import BodyModel
 from numpy import linalg
 
 if len(sys.argv) < 2:
-    print("usage: {} filename.npz".format(sys.argv[0]))
+    print("usage: {} filename.npz [outdir]".format(sys.argv[0]))
     sys.exit()
 
 bindir = os.path.abspath(os.path.dirname(__file__))
 
 amass_npz_fname = sys.argv[1]
+outdir = "output"
+if len(sys.argv) == 3:
+    outdir = sys.argv[2]
 threshold = 0.1
 
 comp_device = torch.device('cpu')
@@ -50,7 +53,7 @@ body_pose_beta = bm(**{k:v for k,v in body_parms.items() if k in ['pose_body', '
 # the frame rate of the SFU mocap data is 120 fps
 dt = 1/120
 
-par_vtx = np.loadtxt(bindir + '/data/parent-of-vertex.txt')
+par_vtx = np.loadtxt(bindir + '/data/parent_of_vertex.txt')
 
 low_pts = []
 
@@ -72,8 +75,8 @@ print("plane equation: {}x+{}y+{}z-1=0".format(p[0], p[1], p[2]))
 n = np.array([0.0, 0.0, 1.0]) # why the commented code above didn't work?
 d = 0
 
-f_node = open('contact-nodes.txt', 'w')
-f_pt_idx = open('contact-point-indices.txt', 'w')
+f_node = open(outdir + '/contact_nodes.txt', 'w')
+f_pt_idx = open(outdir + '/contact_point_indices.txt', 'w')
 
 for i in range(0, frame_length - 1):
     dx = body_pose_beta.v[i+1] - body_pose_beta.v[i]

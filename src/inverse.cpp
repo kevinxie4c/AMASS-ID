@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <Eigen/Core>
+#include <getopt.h>
 #include <dart/dart.hpp>
 #include <Python.h>
 #include "SimCharacter.h"
@@ -19,26 +20,78 @@ using namespace dart::dynamics;
 using namespace dart::simulation;
 using namespace alglib;
 
+void printUsage(char * prgname)
+{
+    cout << "usage: " << prgname << " [options] pose_file contact_file" << endl;
+    cout << endl;
+    cout << "options:" << endl;
+    cout << "-j --char_file=string" << endl;
+    cout << "-f --frame_time=double" << endl;
+    cout << "-c --cutoff_freq=double" << endl;
+    cout << "-g --ground_offset=double" << endl;
+    cout << "-o --outdir=string" << endl;
+}
+
 int main(int argc, char* argv[])
 {
-    string jsonFilename;
-    string posFilename;
+    string jsonFilename = "data/character.json";
+    string poseFilename;
     string contactNodesFilename;
-    double frameTime, cutoffFreq, groundOffset;
-    if (argc == 7)
+    string outdir = "output";
+    double frameTime = 1.0 / 120.0, cutoffFreq = 2, groundOffset = 0;
+
+    while (1)
     {
-	jsonFilename = argv[1];
-	posFilename = argv[2];
-	contactNodesFilename = argv[3];
-	frameTime = stod(argv[4]);
-	cutoffFreq = stod(argv[5]);
-	groundOffset = stod(argv[6]);
+	int c;
+	static struct option long_options[] =
+	{
+	    { "char_file", required_argument, NULL, 'j' },
+	    { "frame_time", required_argument, NULL, 'f' },
+	    { "cutoff_freq", required_argument, NULL, 'c' },
+	    { "ground_offset", required_argument, NULL, 'g' },
+	    { "outdir", required_argument, NULL, 'o' },
+	    { 0, 0, 0, 0 }
+	};
+	int option_index = 0;
+
+	c = getopt_long(argc, argv, "f:c:g:", long_options, &option_index);
+	if (c == -1)
+        break;
+
+	switch (c)
+	{
+	    case 'j':
+		jsonFilename = optarg;
+		break;
+	    case 'f':
+		frameTime = stod(optarg);
+		break;
+	    case 'c':
+		cutoffFreq = stod(optarg);
+		break;
+	    case 'g':
+		groundOffset = stod(optarg);
+		break;
+	    case 'o':
+		outdir = optarg;
+		break;
+	    default:
+		printUsage(argv[0]);
+		exit(0);
+	}
+    }
+
+    if (optind + 2 == argc)
+    {
+	poseFilename = argv[optind];
+	contactNodesFilename = argv[optind + 1];
     }
     else
     {
-	cout << "usage: " << argv[0] << " json_file pos_file contact_file frame_time cutoff_freq ground_offset" << endl;
+	printUsage(argv[0]);
 	exit(0);
     }
+
     SimCharacter character(jsonFilename);
     WorldPtr world = World::create();
     SkeletonPtr &skeleton = character.skeleton;
@@ -51,7 +104,7 @@ int main(int argc, char* argv[])
 		       "sys.path.append(\".\")\n"
                        "print('python version:', sys.version)\n");
 
-    PyObject *pDict = load_npz(posFilename);
+    PyObject *pDict = load_npz(poseFilename);
     //print_py_obj(pDict);
     PyObject *npa;
     npa = PyMapping_GetItemString(pDict, "trans");
@@ -128,12 +181,12 @@ int main(int argc, char* argv[])
     }
     input.close();
 
-    ofstream pout("positions.txt");
-    ofstream fout("forces.txt");
-    ofstream vout("velocities.txt");
-    ofstream aout("accelerations.txt");
-    ofstream cfout("contact_forces.txt");
-    ofstream eout("errors.txt");
+    ofstream pout(outdir + "/positions.txt");
+    ofstream fout(outdir + "/forces.txt");
+    ofstream vout(outdir + "/velocities.txt");
+    ofstream aout(outdir + "/accelerations.txt");
+    ofstream cfout(outdir + "/contact_forces.txt");
+    ofstream eout(outdir + "/errors.txt");
 
     double mu = 1;
     double reg = 10;
