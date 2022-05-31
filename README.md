@@ -33,7 +33,6 @@ options:
     --cutoff_freq=double
     --ground_offset=double
     --outdir=string
-
 ```
 where `char_file` is the JSON file defining the character skeleton and properties (mass, moment of inertia, etc.), `frame_time` is the duration per frame, `cutoff_freq` is the cutoff frequency of the lowpass filter, `ground_offset` is the height of the ground, and `outdir` is the directory for storing the result.
 
