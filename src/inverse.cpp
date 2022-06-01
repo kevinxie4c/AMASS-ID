@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "f:c:g:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:g:o:", long_options, &option_index);
 	if (c == -1)
         break;
 
@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
 	vector<Vector3d> pointList;
 	string s;
 	size_t n;
-	if (strStream >> s >> n)
+	while (strStream >> s >> n)
 	{
 	    double x, y, z;
 	    for (size_t i = 0; i < n; ++i)
@@ -175,9 +175,9 @@ int main(int argc, char* argv[])
 		nodeList.push_back(s);
 		pointList.push_back(Vector3d(x, y, z));
 	    }
-	    contactNodes.push_back(nodeList);
-	    contactPoints.push_back(pointList);
 	}
+	contactNodes.push_back(nodeList);
+	contactPoints.push_back(pointList);
     }
     input.close();
 

@@ -1,5 +1,5 @@
-forces = load('forces.txt');
-error = load('errors.txt');
+forces = load('output/forces.txt');
+error = load('output/errors.txt');
 t = 1:1/1200:100;
 len = 400;
 
@@ -13,6 +13,7 @@ ylabel('torque (N \cdot m)')
 yyaxis right
 plot(t(1:len), error(1:len), 'b-', 'LineWidth', 3);
 ylabel('error');
+ylim([0, 600]);
 
 legend('Left knee', 'Right knee', 'error')
 title('Torques on knees')
