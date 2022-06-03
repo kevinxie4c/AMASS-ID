@@ -44,6 +44,7 @@ void printUsage(char * prgname)
     cout << "-o --outdir=string" << endl;
 }
 
+#if OPTIMIZOR == MOSEK
 void mosekOK(MSKrescodee r)
 {
     if (r != MSK_RES_OK)
@@ -61,6 +62,7 @@ static void MSKAPI printstr(void *handle, const char str[])
 {
     cout << str << endl;
 }
+#endif
 
 
 int main(int argc, char* argv[])
@@ -221,8 +223,11 @@ int main(int argc, char* argv[])
 
     double mu = 1;
     double reg = 10;
+
+#if OPTIMIZOR == MOSEK
     MSKenv_t env = NULL;
     mosekOK(MSK_makeenv(&env, NULL));
+#endif
     
     //for (size_t i = 0; i < accelerations.size(); ++i)
     for (size_t i = 0; i < 500; ++i)
@@ -335,14 +340,15 @@ int main(int argc, char* argv[])
 	    s.setlength(n);
 	    for (size_t i = 0; i < n; ++i)
 	    {
-		for (size_t j = 0; j < n; ++j)
-		    A[i][j] = AtA(i, j);
+		//for (size_t j = 0; j < n; ++j)
+		//    A[i][j] = AtA(i, j);
 		//for (size_t j = i; j < n; ++j)
 		//    if (abs(AtA(i, j)) > 1e-8)
 		//	sparseset(A, i, j, AtA(i, j));
 		b[i] = -atA(0, i);
 		s[i] = 1;
 	    }
+	    A.setcontent(n, n, AtA.data());
 	    //real_2d_array c;
 	    sparsematrix c;
 	    integer_1d_array ct;
@@ -494,7 +500,9 @@ int main(int argc, char* argv[])
 	vout << velocities[i].transpose() << endl;
 	aout << accelerations[i].transpose() << endl;
     }
+#if OPTIMIZOR == MOSEK
     MSK_deleteenv(&env);
+#endif
     pout.close();
     fout.close();
     vout.close();
