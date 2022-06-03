@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <chrono>
 #include <Eigen/Core>
 #include <getopt.h>
 #include <dart/dart.hpp>
@@ -9,16 +10,27 @@
 #include "SimCharacter.h"
 #include "PyUtil.h"
 #include "IOUtil.h"
-#include "ext/optimization.h"
 #include "c_butterworth/c_butterworth_types.h"
 #include "c_butterworth/c_butterworth.h"
 #include "c_butterworth/rt_nonfinite.h"
+
+#define ALGLIB	0
+#define MOSEK	1
+#define OPTIMIZOR   MOSEK
+
+#if OPTIMIZOR == ALGLIB
+#include "ext/optimization.h"
+#else
+#include <mosek.h>
+#endif
 
 using namespace std;
 using namespace Eigen;
 using namespace dart::dynamics;
 using namespace dart::simulation;
+#if OPTIMIZOR == ALGLIB
 using namespace alglib;
+#endif
 
 void printUsage(char * prgname)
 {
@@ -31,6 +43,25 @@ void printUsage(char * prgname)
     cout << "-g --ground_offset=double" << endl;
     cout << "-o --outdir=string" << endl;
 }
+
+void mosekOK(MSKrescodee r)
+{
+    if (r != MSK_RES_OK)
+    {
+	char symname[MSK_MAX_STR_LEN];
+	char desc[MSK_MAX_STR_LEN];
+
+	MSK_getcodedesc(r, symname, desc);
+	cout << "Error " << symname << " - '" << desc << "'\n" << endl;
+	exit(0);
+    }
+}
+
+static void MSKAPI printstr(void *handle, const char str[])
+{
+    cout << str << endl;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -190,6 +221,8 @@ int main(int argc, char* argv[])
 
     double mu = 1;
     double reg = 10;
+    MSKenv_t env = NULL;
+    mosekOK(MSK_makeenv(&env, NULL));
     
     //for (size_t i = 0; i < accelerations.size(); ++i)
     for (size_t i = 0; i < 500; ++i)
@@ -210,25 +243,26 @@ int main(int argc, char* argv[])
 	//std::cout << G << std::endl;
 
 	// TODO: confirm the following computation of dL is correct
-	Eigen::Vector3d dL = Eigen::Vector3d::Zero(); // rate of angular momentum at center of mass
-	Eigen::Vector3d com = skeleton->getCOM();
-	for (const BodyNode *bn: skeleton->getBodyNodes())
-	{
-	    dL += (bn->getCOM() - com).cross(bn->getMass() * bn->getCOMLinearAcceleration());
+	//Eigen::Vector3d dL = Eigen::Vector3d::Zero(); // rate of angular momentum at center of mass
+	//Eigen::Vector3d com = skeleton->getCOM();
+	//for (const BodyNode *bn: skeleton->getBodyNodes())
+	//{
+	//    dL += (bn->getCOM() - com).cross(bn->getMass() * bn->getCOMLinearAcceleration());
 
-	    Eigen::Matrix3d R = bn->getTransform().rotation();
-	    Eigen::Matrix3d I = bn->getInertia().getMoment(); // moment of inertia in local frame
-	    Eigen::Vector3d omiga = bn->getCOMSpatialVelocity().head(3); // angular velocity in local frame
-	    Eigen::Vector3d dOmiga = bn->getCOMSpatialAcceleration().head(3); // angular acceleration in local frame
+	//    Eigen::Matrix3d R = bn->getTransform().rotation();
+	//    Eigen::Matrix3d I = bn->getInertia().getMoment(); // moment of inertia in local frame
+	//    Eigen::Vector3d omiga = bn->getCOMSpatialVelocity().head(3); // angular velocity in local frame
+	//    Eigen::Vector3d dOmiga = bn->getCOMSpatialAcceleration().head(3); // angular acceleration in local frame
 
-	    dL += R * (I * dOmiga + omiga.cross(I * omiga));
-	}
+	//    dL += R * (I * dOmiga + omiga.cross(I * omiga));
+	//}
 
 	VectorXd qddot = accelerations[i];
 
 	
 	if (contactNodes[i].size() > 0)
 	{
+	    std::chrono::steady_clock::time_point time_p = std::chrono::steady_clock::now();
 	    size_t m = ndof;
 	    size_t n = contactNodes[i].size() * 5;
 	    /*
@@ -253,7 +287,8 @@ int main(int argc, char* argv[])
 		MatrixXd B1(6, 3);
 		//B1.topRows(3) = dart::math::makeSkewSymmetric(point);
 		//B1.topRows(3) = dart::math::makeSkewSymmetric(transform.inverse() * point);
-		B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform.translation());
+		//B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform.translation());
+		B1.topRows(3) = Matrix3d::Zero();
 		B1.bottomRows(3) = Matrix3d::Identity();
 		Vector3d normal = Vector3d::UnitZ();
 		Vector3d tangent1 = Vector3d::UnitX();
@@ -285,6 +320,11 @@ int main(int argc, char* argv[])
 	    MatrixXd emA6 = emA.topRows(6);
 	    MatrixXd AtA = emA6.transpose() * emA6;
 	    MatrixXd atA = a6.transpose() * emA6;
+	    AtA += MatrixXd::Identity(n, n) * reg / n;
+	    cout << "matrix construction (Eigen): " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_p).count() << " ms" << endl;
+	    time_p = std::chrono::steady_clock::now();
+
+#if OPTIMIZOR == ALGLIB
 	    real_2d_array A;
 	    //sparsematrix A;
 	    real_1d_array b;
@@ -293,7 +333,6 @@ int main(int argc, char* argv[])
 	    //sparsecreate(n, n, 0, A);
 	    b.setlength(n);
 	    s.setlength(n);
-	    AtA += MatrixXd::Identity(n, n) * reg / n;
 	    for (size_t i = 0; i < n; ++i)
 	    {
 		for (size_t j = 0; j < n; ++j)
@@ -350,12 +389,84 @@ int main(int argc, char* argv[])
 	    minqpsetbc(state, bndl, bndu);
 	    minqpsetscale(state, s);
 	    minqpsetalgobleic(state, 0.0, 0.0, 0.0, 0);
+	    cout << "matrix construction (Alglib): " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_p).count() << " ms" << endl;
 	    minqpoptimize(state);
 	    minqpresults(state, x, rep);
 
+#else
+	    MSKtask_t task = NULL;
+	    size_t num_var = n;
+	    size_t num_con = 4 * contactNodes[i].size();
+	    mosekOK(MSK_maketask(env, num_con, num_var, &task));
+	    mosekOK(MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr));
+	    mosekOK(MSK_appendcons(task, num_con));
+	    mosekOK(MSK_appendvars(task, num_var));
+
+	    // set up lower triangular part of "A" ("Q" in Mosek)
+	    vector<MSKint32t> qsubi, qsubj;
+	    vector<double> qval;
+	    for (size_t i = 0; i < n; ++i)
+	    {
+	        for (size_t j = 0; j <= i; ++j)
+	        {
+	            if (abs(AtA(i, j)) > 1e-8)
+	            {
+	        	qsubi.push_back(i);
+	        	qsubj.push_back(j);
+	        	qval.push_back(AtA(i, j));
+	        	//mosekOK(MSK_putqobjij(task, i, j, AtA(i, j)));
+	            }
+	        }
+	    }
+	    mosekOK(MSK_putqobj(task, qval.size(), qsubi.data(), qsubj.data(), qval.data()));
+	    for (size_t j = 0; j < num_var; ++j)
+	    {
+		mosekOK(MSK_putcj(task, j, -atA(0, j))); // linear term "b" ("c" in Mosek)
+		mosekOK(MSK_putvarbound(task, j, MSK_BK_LO, 0.0, +MSK_INFINITY));
+	    }
+	    // set up constraints
+	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
+	    {
+		for (size_t k = 0; k < 4; ++k)
+		{
+		    mosekOK(MSK_putaij(task, 4 * j + k, 5 * j + 0, mu));
+		    mosekOK(MSK_putaij(task, 4 * j + k, 5 * j + k + 1, -1));
+		    mosekOK(MSK_putconbound(task, 4 * j + k, MSK_BK_LO, 0.0, +MSK_INFINITY));
+		}
+	    }
+	    cout << "matrix construction (Mosek): " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_p).count() << " ms" << endl;
+	    MSKrescodee trmcode;
+	    mosekOK(MSK_optimizetrm(task, &trmcode));
+	    MSK_solutionsummary(task, MSK_STREAM_MSG);
+	    MSKsolstae solsta;
+	    MSK_getsolsta(task, MSK_SOL_ITR, &solsta);
+	    vector<double> x(num_var);
+	    switch (solsta)
+	    {
+		case MSK_SOL_STA_OPTIMAL:
+		    MSK_getxx(task, MSK_SOL_ITR, x.data());
+		    break;
+
+		case MSK_SOL_STA_DUAL_INFEAS_CER:
+		case MSK_SOL_STA_PRIM_INFEAS_CER:
+		    cout << "Primal or dual infeasibility certificate found." << endl;
+		    break;
+
+		case MSK_SOL_STA_UNKNOWN:
+		    cout << "The status of the solution could not be determined. Termination code: " << trmcode << endl;
+		    break;
+
+		default:
+		    cout << "Other solution status." << endl;
+		    break;
+	    }
+	    MSK_deletetask(&task);
+
+#endif
 	    VectorXd lambda(n);
 	    for (size_t i = 0; i < n; ++i)
 		lambda[i] = x[i];
+
 	    //cout << "lambda" << endl;
 	    //cout << lambda << endl;
 	    //cout << "error1 = " << (lambda.transpose() * AtA * lambda - atA * lambda * 2 + a6.transpose() * a6).cwiseSqrt() << endl; 
@@ -383,6 +494,7 @@ int main(int argc, char* argv[])
 	vout << velocities[i].transpose() << endl;
 	aout << accelerations[i].transpose() << endl;
     }
+    MSK_deleteenv(&env);
     pout.close();
     fout.close();
     vout.close();

@@ -27,8 +27,16 @@ set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
 
+# modify these if necessary
+set(MOSEK_INCLUDE_PATH $ENV{HOME}/mosek/9.3/tools/platform/linux64x86/h)
+set(MOSEK_LIB_PATH $ENV{HOME}/mosek/9.3/tools/platform/linux64x86/bin)
+set(MOSEK_LINK_OPTIONS -L${MOSEK_LIB_PATH} -Wl,-rpath=${MOSEK_LIB_PATH} -lmosek64)
+message(STATUS "${MOSEK_LINK_OPTIONS}")
+
+include_directories(${MOSEK_INCLUDE_PATH})
+
 add_executable(inverse.out src/inverse.cpp src/SimCharacter.cpp src/PyUtil.cpp src/IOUtil.cpp ${EXT_SRC_FILES} ${BUTTER_SRC_FILES})
-target_link_libraries(inverse.out m stdc++ dart dart-collision-ode assimp boost_system ${Python3_LINK_OPTIONS})
+target_link_libraries(inverse.out m stdc++ dart dart-collision-ode assimp boost_system ${Python3_LINK_OPTIONS} ${MOSEK_LINK_OPTIONS})
 
 add_executable(CharacterViewer.out src/CharacterViewer.cpp src/SimCharacter.cpp src/PyUtil.cpp src/IOUtil.cpp)
 target_link_libraries(CharacterViewer.out stdc++ dart dart-gui-osg osg osgViewer osgUtil osgGA assimp boost_system dart-external-imgui ${Python3_LINK_OPTIONS})

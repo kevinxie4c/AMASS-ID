@@ -36,5 +36,10 @@ USAGE
 
 mkdir $outdir unless -e $outdir;
 
-system "python find-contact-node.py '$pose_file' '$outdir'";
-system "./inverse.out --char_file='$char_file' --frame_time=$frame_time --cutoff_freq=$cutoff_freq --ground_offset=$ground_offset --outdir='$outdir' '$pose_file' '$outdir/contact_nodes.txt'";
+my $cmd;
+$cmd = "python find-contact-node.py '$pose_file' '$outdir'";
+print "$cmd\n";
+system $cmd;
+$cmd = "./inverse.out --char_file='$char_file' --frame_time=$frame_time --cutoff_freq=$cutoff_freq --ground_offset=$ground_offset --outdir='$outdir' '$pose_file' '$outdir/contact_nodes.txt'";
+print "$cmd\n";
+system $cmd;
