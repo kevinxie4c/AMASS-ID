@@ -9,13 +9,17 @@
 #include <dart/external/imgui/imgui.h>
 #include <osgUtil/SmoothingVisitor>
 #include <Python.h>
+#include <osg/BlendFunc>
+#include <osg/CullFace>
+#include <osg/FrontFace>
 #include "SimCharacter.h"
 #include "PyUtil.h"
 #include "IOUtil.h"
 
 int frame = 0;
-double forceScale = 0.002;
-double epsilon = 0.00001;
+double forceScale = 0.003;
+double epsilon = 0.01;
+double meshAlpha = 0.3;
 Eigen::MatrixXd positions;
 dart::dynamics::SkeletonPtr skeleton;
 osg::ref_ptr<osg::Geometry> mesh;
@@ -27,24 +31,55 @@ osg::ref_ptr<osg::Group> group;
 osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end)
 {
     osg::Vec3 dir = end - start;
-    osg::ref_ptr<osg::MatrixTransform> node = new osg::MatrixTransform();
+    osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform();
+    osg::ref_ptr<osg::Geode> node = new osg::Geode();
     osg::ref_ptr<osg::ShapeDrawable> cylinder = new osg::ShapeDrawable();
-    cylinder->setShape(new osg::Cylinder(osg::Vec3(0, 0, dir.length() / 2), 0.01, dir.length()));
+    osg::ref_ptr<osg::Shape> cylinderShape = new osg::Cylinder(osg::Vec3(0, 0, dir.length() / 2), 0.002, dir.length());
+    cylinder->setShape(cylinderShape.get());
     cylinder->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
     osg::ref_ptr<osg::ShapeDrawable> cone = new osg::ShapeDrawable();
-    cone->setShape(new osg::Cone(osg::Vec3(0, 0, dir.length()), 0.02, 0.04));
+    osg::ref_ptr<osg::Shape> coneShape = new osg::Cone(osg::Vec3(0, 0, dir.length()), 0.004, 0.008);
+    cone->setShape(coneShape.get());
     cone->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
-    node->addChild(cylinder);
-    node->addChild(cone);
+    node->addDrawable(cylinder.get());
+    node->addDrawable(cone.get());
     dir.normalize();
     //node->setMatrix(osg::Matrix::translate(start) * osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir));
     //std::cout << "dir " << dir[0] << " " << dir[1] << " " << dir[2] << std::endl;
     //std::cout << "start " << start[0] << " " << start[1] << " " << start[2] << std::endl;
-    node->setMatrix(osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir) * osg::Matrix::translate(start));
-    return node;
+    transform->addChild(node.get());
+    transform->setMatrix(osg::Matrix::rotate(osg::Vec3(0, 0, 1), dir) * osg::Matrix::translate(start));
+    return transform;
 }
 
-class TestWidget : public dart::gui::osg::ImGuiWidget
+class CustomCallBack: public osg::NodeCallback
+{
+public:
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv )
+    {
+	osg::Group *group = (osg::Group*)node;
+	group->removeChildren(0, group->getNumChildren());
+	for (size_t i = 0; i < contacts[frame].rows(); i += 6)
+	{
+	    const Eigen::VectorXd &v = contacts[frame];
+	    //osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
+	    //shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
+	    //shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+	    //group->addChild(shape);
+	    //shape = new osg::ShapeDrawable();
+	    //shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0] + forceScale * v[i + 3], v[i + 1] + forceScale * v[i + 4], v[i + 2] + forceScale * v[i + 5]), 0.02));
+	    //shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+	    //group->addChild(shape);
+	    osg::Vec3 point = osg::Vec3(v[i + 0], v[i + 1], v[i + 2]);
+	    osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
+	    //std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
+	    if (force.length() > epsilon)
+		group->addChild(makeArrow(point, point + force * forceScale).get());
+	}
+    }
+};
+
+class TestWidget: public dart::gui::osg::ImGuiWidget
 {
 public:
 
@@ -68,12 +103,13 @@ public:
 	    {
 		const Eigen::VectorXd &v = vertices[frame].row(i);
 		(*vertexArray)[i] = osg::Vec3(v[0], v[1], v[2]);
-		(*colorArray)[i] = osg::Vec4(1.0, 1.0, 1.0, 1.0);
+		(*colorArray)[i] = osg::Vec4(1.0, 1.0, 1.0, meshAlpha);
 	    }
 	    for (int i = 0; i < pointIndices[frame].rows(); ++i)
 	    {
-		(*colorArray)[pointIndices[frame][i]] = osg::Vec4(1.0, 0.0, 0.0, 1.0);
+		(*colorArray)[pointIndices[frame][i]] = osg::Vec4(1.0, 0.0, 0.0, meshAlpha);
 	    }
+	    /*
 	    group->removeChildren(0, group->getNumChildren());
 	    for (size_t i = 0; i < contacts[frame].rows(); i += 6)
 	    {
@@ -90,10 +126,12 @@ public:
 		osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
 		//std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
 		if (force.length() > epsilon)
-		    group->addChild(makeArrow(point, point + force * forceScale));
+		    group->addChild(makeArrow(point, point + force * forceScale).get());
 	    }
+	    */
 	    mesh->dirtyDisplayList();
 	    mesh->dirtyBound();
+	    
 	}
 	ImGui::End();
     }
@@ -294,11 +332,11 @@ int main(int argc, char *argv[])
     {
 	const Eigen::VectorXd &v = vertices[0].row(i);
 	vertexArray->push_back(osg::Vec3(v[0], v[1], v[2]));
-	colorArray->push_back(osg::Vec4(1.0, 1.0, 1.0, 1.0));
+	colorArray->push_back(osg::Vec4(1.0, 1.0, 1.0, meshAlpha));
     }
     for (int i = 0; i < pointIndices[0].rows(); ++i)
     {
-	(*colorArray)[pointIndices[0][i]] = osg::Vec4(1.0, 0.0, 0.0, 1.0);
+	(*colorArray)[pointIndices[0][i]] = osg::Vec4(1.0, 0.0, 0.0, meshAlpha);
     }
     for (int i = 0; i < faces.rows(); ++i)
     {
@@ -308,15 +346,30 @@ int main(int argc, char *argv[])
 	indexArray->push_back(v[2]);
     }
     mesh = new osg::Geometry();
-    mesh->setVertexArray(vertexArray);
-    mesh->setColorArray(colorArray);
+    mesh->setVertexArray(vertexArray.get());
+    mesh->setColorArray(colorArray.get());
     mesh->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-    mesh->addPrimitiveSet(indexArray);
+    mesh->addPrimitiveSet(indexArray.get());
     osgUtil::SmoothingVisitor::smooth(*mesh);
     mesh->setDataVariance(osg::Object::DYNAMIC);
     osg::ref_ptr<osg::Geode> geoNode = new osg::Geode();
-    geoNode->addDrawable(mesh);
-    worldNode->addChild(geoNode);
+    geoNode->addDrawable(mesh.get());
+
+    //osg::ref_ptr<osg::StateSet> stateSet = geoNode->getOrCreateStateSet();
+    osg::StateSet *stateSet = geoNode->getOrCreateStateSet();
+    stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    //stateSet->setMode(GL_CULL_FACE, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    //stateSet->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    osg::ref_ptr<osg::BlendFunc> blendFunc = new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA);
+    stateSet->setAttributeAndModes(blendFunc.get());
+    osg::ref_ptr<osg::CullFace> cullFace = new osg::CullFace(osg::CullFace::BACK);
+    stateSet->setAttributeAndModes(cullFace.get());
+    osg::ref_ptr<osg::FrontFace> frontFace = new osg::FrontFace(osg::FrontFace::COUNTER_CLOCKWISE);
+    stateSet->setAttributeAndModes(frontFace.get());
+    stateSet->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+
+
+    worldNode->addChild(geoNode.get());
 
     contacts = readVectorXdListFrom(outdir + "/contact_forces.txt");
     group = new osg::Group();
@@ -336,11 +389,12 @@ int main(int argc, char *argv[])
 	//force = osg::Vec3(0, 0, 50);
 	//std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
 	if (force.length() > epsilon)
-	    group->addChild(makeArrow(point, point + force * forceScale));
+	    group->addChild(makeArrow(point, point + force * forceScale).get());
     }
-    worldNode->addChild(group);
+    group->setUpdateCallback(new CustomCallBack());
+    worldNode->addChild(group.get());
 
-    viewer->addWorldNode(worldNode);
+    viewer->addWorldNode(worldNode.get());
     viewer->getImGuiHandler()->addWidget(std::make_shared<TestWidget>(viewer, world));
 
     osg::Vec3d eye(0, 0, 5);
