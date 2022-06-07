@@ -221,6 +221,24 @@ int main(int argc, char* argv[])
     ofstream cfout(outdir + "/contact_forces.txt");
     ofstream eout(outdir + "/errors.txt");
 
+    /* Jacobian test
+    SimCharacter acrobot("Acrobot.json");
+    acrobot.skeleton->setPositions(Vector2d(1.57079632679, 0));
+    Vector2d dq = Vector2d(1, 2);
+    acrobot.skeleton->setVelocities(dq);
+    BodyNodePtr bn = acrobot.skeleton->getBodyNode(1);
+    MatrixXd J = acrobot.skeleton->getWorldJacobian(bn, Vector3d(0, -2, 0));
+    cout << "J * dq" << endl;
+    cout << J * dq << endl;
+    cout << "sv" << endl;
+    cout << bn->getSpatialVelocity() << endl;
+    cout << "T.t" << endl;
+    cout << bn->getWorldTransform().translation() << endl;
+    cout << "T.R" << endl;
+    cout << bn->getWorldTransform().linear() << endl;
+    return 0;
+    */
+
     double mu = 1;
     double reg = 10;
 
@@ -288,12 +306,13 @@ int main(int argc, char* argv[])
 		const BodyNode *bn = skeleton->getBodyNode(contactNodes[i][j]);
 		const Vector3d &point = contactPoints[i][j];
 		Isometry3d transform = bn->getWorldTransform();
-		MatrixXd Jt = skeleton->getWorldJacobian(bn, transform.inverse() * point).transpose();
+		//MatrixXd Jt = skeleton->getWorldJacobian(bn, transform.inverse() * point).transpose();
+		MatrixXd Jt = skeleton->getWorldJacobian(bn).transpose();
 		MatrixXd B1(6, 3);
 		//B1.topRows(3) = dart::math::makeSkewSymmetric(point);
 		//B1.topRows(3) = dart::math::makeSkewSymmetric(transform.inverse() * point);
-		//B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform.translation());
-		B1.topRows(3) = Matrix3d::Zero();
+		B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform.translation());
+		//B1.topRows(3) = Matrix3d::Zero();
 		B1.bottomRows(3) = Matrix3d::Identity();
 		Vector3d normal = Vector3d::UnitZ();
 		Vector3d tangent1 = Vector3d::UnitX();
