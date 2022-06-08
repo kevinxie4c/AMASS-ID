@@ -171,18 +171,18 @@ public:
 
 void printUsage(char * prgname)
 {
-    std::cout << "usage: " << prgname << " pose_file" << std::endl;
+    std::cout << "usage: " << prgname << " pose_file contact_point_indices_file contact_forces_file" << std::endl;
     std::cout << std::endl;
     std::cout << "options:" << std::endl;
-    std::cout << "-j --char_file=string" << std::endl;
-    std::cout << "-o --outdir=string" << std::endl;
+    std::cout << "\t-j --char_file=string" << std::endl;
 }
 
 int main(int argc, char *argv[])
 {
     std::string jsonFilename = "data/character.json";
     std::string poseFilename;
-    std::string outdir = "output";
+    std::string cpiFilename;
+    std::string cfFilename;
 
     while (1)
     {
@@ -190,12 +190,11 @@ int main(int argc, char *argv[])
 	static struct option long_options[] =
 	{
 	    { "char_file", required_argument, NULL, 'j' },
-	    { "outdir", required_argument, NULL, 'o' },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:o:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:", long_options, &option_index);
 	if (c == -1)
         break;
 
@@ -204,18 +203,17 @@ int main(int argc, char *argv[])
 	    case 'j':
 		jsonFilename = optarg;
 		break;
-	    case 'o':
-		outdir = optarg;
-		break;
 	    default:
 		printUsage(argv[0]);
 		exit(0);
 	}
     }
 
-    if (optind + 1 == argc)
+    if (optind + 3 == argc)
     {
 	poseFilename = argv[optind];
+	cpiFilename = argv[optind + 1];
+	cfFilename = argv[optind + 2];
     }
     else
     {
@@ -311,7 +309,7 @@ int main(int argc, char *argv[])
     positions.middleCols(3, 3) = trans;
     positions.rightCols(poses.cols() - 3) = poses.rightCols(poses.cols() - 3);
 
-    pointIndices = readVectorXdListFrom(outdir + "/contact_point_indices.txt");
+    pointIndices = readVectorXdListFrom(cpiFilename);
 
     /*
     for (size_t i = 0; i < character.skeleton->getNumDofs(); ++i)
@@ -371,7 +369,7 @@ int main(int argc, char *argv[])
 
     worldNode->addChild(geoNode.get());
 
-    contacts = readVectorXdListFrom(outdir + "/contact_forces.txt");
+    contacts = readVectorXdListFrom(cfFilename);
     group = new osg::Group();
     for (size_t i = 0; i < contacts[0].rows(); i += 6)
     {

@@ -8,6 +8,7 @@ my $char_file = "data/character.json";
 my $frame_time = 1/120;
 my $cutoff_freq = 2;
 my $ground_offset = 0;
+my $reg = 10;
 my $outdir = "output";
 my $pose_file;
 
@@ -16,6 +17,7 @@ GetOptions(
     "frame_time=i" => \$frame_time,
     "cutoff_freq=i" => \$cutoff_freq,
     "ground_offset=i" => \$ground_offset,
+    "regularization=i" => \$reg,
     "outdir=s"=> \$outdir,
 );
 
@@ -28,6 +30,7 @@ options:
     --frame_time=double
     --cutoff_freq=double
     --ground_offset=double
+    --regularization=double
     --outdir=string
 USAGE
 } else {
@@ -40,6 +43,6 @@ my $cmd;
 $cmd = "python find-contact-node.py '$pose_file' '$outdir'";
 print "$cmd\n";
 system $cmd;
-$cmd = "./inverse.out --char_file='$char_file' --frame_time=$frame_time --cutoff_freq=$cutoff_freq --ground_offset=$ground_offset --outdir='$outdir' '$pose_file' '$outdir/contact_nodes.txt'";
+$cmd = "./inverse.out --char_file='$char_file' --frame_time=$frame_time --cutoff_freq=$cutoff_freq --ground_offset=$ground_offset --regularization=$reg --outdir='$outdir' '$pose_file' '$outdir/contact_nodes.txt'";
 print "$cmd\n";
 system $cmd;

@@ -37,11 +37,12 @@ void printUsage(char * prgname)
     cout << "usage: " << prgname << " [options] pose_file contact_file" << endl;
     cout << endl;
     cout << "options:" << endl;
-    cout << "-j --char_file=string" << endl;
-    cout << "-f --frame_time=double" << endl;
-    cout << "-c --cutoff_freq=double" << endl;
-    cout << "-g --ground_offset=double" << endl;
-    cout << "-o --outdir=string" << endl;
+    cout << "\t-j --char_file=string" << endl;
+    cout << "\t-f --frame_time=double" << endl;
+    cout << "\t-c --cutoff_freq=double" << endl;
+    cout << "\t-g --ground_offset=double" << endl;
+    cout << "\t-r --regularization=double" << endl;
+    cout << "\t-o --outdir=string" << endl;
 }
 
 #if OPTIMIZOR == MOSEK
@@ -71,7 +72,7 @@ int main(int argc, char* argv[])
     string poseFilename;
     string contactNodesFilename;
     string outdir = "output";
-    double frameTime = 1.0 / 120.0, cutoffFreq = 2, groundOffset = 0;
+    double frameTime = 1.0 / 120.0, cutoffFreq = 2, groundOffset = 0, mu = 1, reg = 10;
 
     while (1)
     {
@@ -82,12 +83,13 @@ int main(int argc, char* argv[])
 	    { "frame_time", required_argument, NULL, 'f' },
 	    { "cutoff_freq", required_argument, NULL, 'c' },
 	    { "ground_offset", required_argument, NULL, 'g' },
+	    { "regularization", required_argument, NULL, 'r' },
 	    { "outdir", required_argument, NULL, 'o' },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:f:c:g:o:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:g:r:o:", long_options, &option_index);
 	if (c == -1)
         break;
 
@@ -104,6 +106,9 @@ int main(int argc, char* argv[])
 		break;
 	    case 'g':
 		groundOffset = stod(optarg);
+		break;
+	    case 'r':
+		reg = stod(optarg);
 		break;
 	    case 'o':
 		outdir = optarg;
@@ -238,9 +243,6 @@ int main(int argc, char* argv[])
     cout << bn->getWorldTransform().linear() << endl;
     return 0;
     */
-
-    double mu = 1;
-    double reg = 10;
 
 #if OPTIMIZOR == MOSEK
     MSKenv_t env = NULL;
