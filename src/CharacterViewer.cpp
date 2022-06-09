@@ -19,7 +19,10 @@
 int frame = 0;
 double forceScale = 0.003;
 double epsilon = 0.01;
-double meshAlpha = 0.3;
+float meshAlpha = 0.3;
+bool inverted = false;
+bool transparent = true;
+bool playing = false;
 Eigen::MatrixXd positions;
 dart::dynamics::SkeletonPtr skeleton;
 osg::ref_ptr<osg::Geometry> mesh;
@@ -27,6 +30,7 @@ std::vector<Eigen::MatrixXd> vertices;
 std::vector<Eigen::VectorXd> pointIndices;
 std::vector<Eigen::VectorXd> contacts;
 osg::ref_ptr<osg::Group> group;
+osg::StateSet *stateSet;
 
 osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end)
 {
@@ -73,8 +77,9 @@ public:
 	    osg::Vec3 point = osg::Vec3(v[i + 0], v[i + 1], v[i + 2]);
 	    osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
 	    //std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
+	    double sign = inverted ? -1 : 1;
 	    if (force.length() > epsilon)
-		group->addChild(makeArrow(point, point + force * forceScale).get());
+		group->addChild(makeArrow(point, point + force * sign * forceScale).get());
 	}
     }
 };
@@ -94,6 +99,20 @@ public:
 	ImGui::Begin("Control");
 	//ImGui::SliderInt("frame", &frame, 0, positions.rows() - 1);
 	ImGui::SliderInt("frame", &frame, 0, 499);
+	ImGui::Checkbox("Inverted contact force", &inverted);
+	ImGui::Checkbox("Transparent mesh", &transparent);
+	ImGui::SliderFloat("Alpha", &meshAlpha, 0.0f, 1.0f);
+	ImGui::End();
+	if (transparent)
+	{
+	    stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+	    stateSet->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+	}
+	else
+	{
+	    stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+	    stateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+	}
 	skeleton->setPositions(positions.row(frame));
 	if (frame < vertices.size())
 	{
@@ -131,9 +150,7 @@ public:
 	    */
 	    mesh->dirtyDisplayList();
 	    mesh->dirtyBound();
-	    
 	}
-	ImGui::End();
     }
 
 private:
@@ -151,16 +168,26 @@ public:
 
     virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&) override
     {
-	if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
+	switch (ea.getEventType())
 	{
-	    if (ea.getKey() == 'r')
-	    {
-		if (mViewer->isRecording())
-		    mViewer->pauseRecording();
-		else
-		    mViewer->record("output");
+	    case osgGA::GUIEventAdapter::KEYDOWN:
+		switch (ea.getKey())
+		{
+		    case 'r':
+			if (mViewer->isRecording())
+			    mViewer->pauseRecording();
+			else
+			    mViewer->record("output");
+			return true;
+		    case ' ':
+			playing = !playing;
+			return true;
+		}
+		break;
+	    case osgGA::GUIEventAdapter::FRAME:
+		if (playing && frame < 499)
+		    ++frame;
 		return true;
-	    }
 	}
 	return false;
     }
@@ -354,10 +381,18 @@ int main(int argc, char *argv[])
     geoNode->addDrawable(mesh.get());
 
     //osg::ref_ptr<osg::StateSet> stateSet = geoNode->getOrCreateStateSet();
-    osg::StateSet *stateSet = geoNode->getOrCreateStateSet();
-    stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    //stateSet->setMode(GL_CULL_FACE, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    //stateSet->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    stateSet = geoNode->getOrCreateStateSet();
+    if (transparent)
+    {
+	stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+	stateSet->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    }
+    else
+    {
+	stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+	stateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    }
+    stateSet->setMode(GL_CULL_FACE, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     osg::ref_ptr<osg::BlendFunc> blendFunc = new osg::BlendFunc(osg::BlendFunc::SRC_ALPHA, osg::BlendFunc::ONE_MINUS_SRC_ALPHA);
     stateSet->setAttributeAndModes(blendFunc.get());
     osg::ref_ptr<osg::CullFace> cullFace = new osg::CullFace(osg::CullFace::BACK);
@@ -386,8 +421,9 @@ int main(int argc, char *argv[])
 	osg::Vec3 force = osg::Vec3(v[i + 3], v[i + 4], v[i + 5]);
 	//force = osg::Vec3(0, 0, 50);
 	//std::cout << "point " << point[0] << " " << point[1] << " " << point[2] << std::endl;
+	double sign = inverted ? -1 : 1;
 	if (force.length() > epsilon)
-	    group->addChild(makeArrow(point, point + force * forceScale).get());
+	    group->addChild(makeArrow(point, point + force * sign * forceScale).get());
     }
     group->setUpdateCallback(new CustomCallBack());
     worldNode->addChild(group.get());

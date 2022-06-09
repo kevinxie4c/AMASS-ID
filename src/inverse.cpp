@@ -513,6 +513,7 @@ int main(int argc, char* argv[])
 	{
 	    VectorXd Q = M * qddot + C;
 	    //Q.head(6) = VectorXd::Zero(6);
+	    eout << Q.head(6).norm() << endl; 
 	    fout << Q.transpose() << endl;
 	    cfout << endl;
 	}
