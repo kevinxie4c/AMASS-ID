@@ -1,8 +1,7 @@
 #!/usr/bin/env perl
+use Getopt::Long;
 use strict;
 use warnings;
-
-use Getopt::Long;
 
 my $char_file = "data/character.json";
 my $frame_time = 1/120;
@@ -13,12 +12,12 @@ my $outdir = "output";
 my $pose_file;
 
 GetOptions(
-    "char_file=s" => \$char_file,
-    "frame_time=i" => \$frame_time,
-    "cutoff_freq=i" => \$cutoff_freq,
-    "ground_offset=i" => \$ground_offset,
-    "regularization=i" => \$reg,
-    "outdir=s"=> \$outdir,
+    "j|char_file=s" => \$char_file,
+    "f|frame_time=i" => \$frame_time,
+    "c|cutoff_freq=i" => \$cutoff_freq,
+    "g|ground_offset=i" => \$ground_offset,
+    "r|regularization=i" => \$reg,
+    "o|outdir=s"=> \$outdir,
 );
 
 if (@ARGV != 1) {
@@ -26,12 +25,12 @@ if (@ARGV != 1) {
 usage: $0 [options] pose_file
 
 options:
-    --char_file=string
-    --frame_time=double
-    --cutoff_freq=double
-    --ground_offset=double
-    --regularization=double
-    --outdir=string
+    -j, --char_file=string
+    -f, --frame_time=double
+    -c, --cutoff_freq=double
+    -g, --ground_offset=double
+    -r, --regularization=double
+    -o, --outdir=string
 USAGE
 } else {
     $pose_file = shift @ARGV;

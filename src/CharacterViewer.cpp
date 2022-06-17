@@ -201,7 +201,7 @@ void printUsage(char * prgname)
     std::cout << "usage: " << prgname << " pose_file contact_point_indices_file contact_forces_file" << std::endl;
     std::cout << std::endl;
     std::cout << "options:" << std::endl;
-    std::cout << "\t-j --char_file=string" << std::endl;
+    std::cout << "\t-j, --char_file=string" << std::endl;
 }
 
 int main(int argc, char *argv[])

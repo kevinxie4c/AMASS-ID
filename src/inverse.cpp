@@ -37,12 +37,12 @@ void printUsage(char * prgname)
     cout << "usage: " << prgname << " [options] pose_file contact_file" << endl;
     cout << endl;
     cout << "options:" << endl;
-    cout << "\t-j --char_file=string" << endl;
-    cout << "\t-f --frame_time=double" << endl;
-    cout << "\t-c --cutoff_freq=double" << endl;
-    cout << "\t-g --ground_offset=double" << endl;
-    cout << "\t-r --regularization=double" << endl;
-    cout << "\t-o --outdir=string" << endl;
+    cout << "\t-j, --char_file=string" << endl;
+    cout << "\t-f, --frame_time=double" << endl;
+    cout << "\t-c, --cutoff_freq=double" << endl;
+    cout << "\t-g, --ground_offset=double" << endl;
+    cout << "\t-r, --regularization=double" << endl;
+    cout << "\t-o, --outdir=string" << endl;
 }
 
 #if OPTIMIZOR == MOSEK
