@@ -244,18 +244,28 @@ int main(int argc, char* argv[])
     return 0;
     */
 
+    SkeletonPtr kin_skeleton = skeleton->clone();
+    size_t f_start = 240, f_end = 300;
+    VectorXd pos = positions[f_start];
+    VectorXd vel = velocities[f_start];
+    VectorXd acc;
 #if OPTIMIZOR == MOSEK
     MSKenv_t env = NULL;
     mosekOK(MSK_makeenv(&env, NULL));
 #endif
     
     //for (size_t i = 0; i < accelerations.size(); ++i)
-    for (size_t i = 0; i < 500; ++i)
+    for (size_t i = f_start; i < f_end; ++i)
     {
 	cout << "frame " << i << endl;
+	kin_skeleton->setPositions(positions[i]);
+	/*
 	skeleton->setPositions(positions[i]);
 	skeleton->setVelocities(velocities[i]);
-	skeleton->setAccelerations(accelerations[i]);
+	*/
+	skeleton->setPositions(pos);
+	skeleton->setVelocities(vel);
+	//skeleton->setAccelerations(accelerations[i]);
 	//VectorXd v = VectorXd::Zero(ndof);
 	//skeleton->setPositions(v);
 	//skeleton->setVelocities(v);
@@ -307,7 +317,8 @@ int main(int argc, char* argv[])
 	    {
 		const BodyNode *bn = skeleton->getBodyNode(contactNodes[i][j]);
 		const Vector3d &point = contactPoints[i][j];
-		Isometry3d transform = bn->getWorldTransform();
+		//Isometry3d transform = bn->getWorldTransform();
+		Isometry3d transform = kin_skeleton->getBodyNode(contactNodes[i][j])->getWorldTransform();
 		//MatrixXd Jt = skeleton->getWorldJacobian(bn, transform.inverse() * point).transpose();
 		MatrixXd Jt = skeleton->getWorldJacobian(bn).transpose();
 		MatrixXd B1(6, 3);
@@ -508,6 +519,9 @@ int main(int argc, char* argv[])
 		cfout << contactPoints[i][j].transpose() << " " << f.transpose() << " ";
 	    }
 	    cfout << endl;
+
+	    Q.head(6) = VectorXd::Zero(6);
+	    acc = M.colPivHouseholderQr().solve(Q + emA * lambda - C);
 	}
 	else
 	{
@@ -516,11 +530,32 @@ int main(int argc, char* argv[])
 	    eout << Q.head(6).norm() << endl; 
 	    fout << Q.transpose() << endl;
 	    cfout << endl;
+
+	    Q.head(6) = VectorXd::Zero(6);
+	    acc = M.colPivHouseholderQr().solve(Q - C);
 	}
 
+	/*
 	pout << positions[i].transpose() << endl;
 	vout << velocities[i].transpose() << endl;
+	*/
+	pout << pos.transpose() << endl;
+	vout << vel.transpose() << endl;
 	aout << accelerations[i].transpose() << endl;
+
+	/* note: following code for integration is wrong!
+	pos = skeleton->getPositionDifferences(pos, - vel * frameTime);
+	vel = skeleton->getVelocityDifferences(vel, - acc * frameTime);
+	*/
+
+	skeleton->setVelocities(vel);
+	//acc = accelerations[i];
+	skeleton->setAccelerations(acc);
+	skeleton->integratePositions(frameTime);
+	skeleton->integrateVelocities(frameTime);
+	pos = skeleton->getPositions();
+	vel = skeleton->getVelocities();
+	//vel = velocities[i + 1];
     }
 #if OPTIMIZOR == MOSEK
     MSK_deleteenv(&env);
