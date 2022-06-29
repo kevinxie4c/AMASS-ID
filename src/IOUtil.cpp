@@ -32,3 +32,15 @@ std::vector<Eigen::VectorXd> readVectorXdListFrom(const std::string &filename)
     return result;
 }
 
+Eigen::MatrixXd readMatrixXFrom(const std::string &filename)
+{
+    Eigen::MatrixXd m;
+    std::vector<Eigen::VectorXd> vlist = readVectorXdListFrom(filename);
+    if (vlist.size() > 0 && vlist[0].size() > 0)
+    {
+	m = Eigen::MatrixXd(vlist.size(), vlist[0].size());
+	for (size_t i = 0; i < vlist.size(); ++i)
+	    m.row(i) = vlist[i];
+    }
+    return m;
+}
