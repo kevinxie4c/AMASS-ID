@@ -18,6 +18,7 @@
 #define MOSEK	1
 #define OPTIMIZOR   MOSEK
 #define FULL_SOLVE
+//#define USE_SIM_STATE
 
 #if OPTIMIZOR == ALGLIB
 #include "ext/optimization.h"
@@ -252,7 +253,8 @@ int main(int argc, char* argv[])
 
     SkeletonPtr kin_skeleton = skeleton->cloneSkeleton();
     //size_t f_start = 240, f_end = 300;
-    size_t f_start = 50, f_end = 500;
+    //size_t f_start = 0, f_end = 500;
+    size_t f_start = 0, f_end = accelerations.size();
 #ifdef FULL_SOLVE
     VectorXd pos = positions[f_start];
     VectorXd vel = velocities[f_start];
@@ -271,10 +273,13 @@ int main(int argc, char* argv[])
 	cout << "frame " << i << endl;
 	kin_skeleton->setPositions(positions[i]);
 #ifdef FULL_SOLVE
-	//pos = positions[i];
-	//vel = velocities[i];
+#ifndef USE_SIM_STATE
+	pos = positions[i];
+	vel = velocities[i];
+	vel_hat = velocities[i + 1];
+#else
 	vel_hat = skeleton->getPositionDifferences(positions[i + 1], pos) / frameTime;
-	//vel_hat = velocities[i + 1];
+#endif
 	skeleton->setPositions(pos);
 	skeleton->setVelocities(vel);
 #else
