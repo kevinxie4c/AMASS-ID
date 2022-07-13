@@ -7,7 +7,7 @@ my $char_file = "data/character.json";
 my $frame_time = 1/120;
 my $cutoff_freq = 2;
 my $ground_offset = 0;
-my $reg = 10;
+my $reg = 0.0001;
 my $outdir = "output";
 my $pose_file;
 
