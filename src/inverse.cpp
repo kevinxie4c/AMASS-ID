@@ -18,7 +18,7 @@
 #define MOSEK	1
 #define OPTIMIZOR   MOSEK
 #define FULL_SOLVE
-//#define USE_SIM_STATE
+#define USE_SIM_STATE
 
 #if OPTIMIZOR == ALGLIB
 #include "ext/optimization.h"
@@ -42,7 +42,7 @@ void printUsage(char * prgname)
     cout << "\t-j, --char_file=string" << endl;
     cout << "\t-f, --frame_time=double" << endl;
     cout << "\t-c, --cutoff_freq=double" << endl;
-    cout << "\t-g, --ground_offset=double" << endl;
+    cout << "\t-s, --step_length=double" << endl;
     cout << "\t-r, --regularization=double" << endl;
     cout << "\t-o, --outdir=string" << endl;
 }
@@ -74,7 +74,8 @@ int main(int argc, char* argv[])
     string poseFilename;
     string contactNodesFilename;
     string outdir = "output";
-    double frameTime = 1.0 / 120.0, cutoffFreq = 2, groundOffset = 0, mu = 1, reg = 0.0001;
+    double frameTime = 1.0 / 120.0, cutoffFreq = 2, mu = 1, reg = 0.0001;
+    size_t stepLength = 1;
 
     while (1)
     {
@@ -84,14 +85,15 @@ int main(int argc, char* argv[])
 	    { "char_file", required_argument, NULL, 'j' },
 	    { "frame_time", required_argument, NULL, 'f' },
 	    { "cutoff_freq", required_argument, NULL, 'c' },
-	    { "ground_offset", required_argument, NULL, 'g' },
+	    { "mu", required_argument, NULL, 'u' },
+	    { "step_length", required_argument, NULL, 's' },
 	    { "regularization", required_argument, NULL, 'r' },
 	    { "outdir", required_argument, NULL, 'o' },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:f:c:g:r:o:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:u:s:r:o:", long_options, &option_index);
 	if (c == -1)
         break;
 
@@ -106,8 +108,11 @@ int main(int argc, char* argv[])
 	    case 'c':
 		cutoffFreq = stod(optarg);
 		break;
-	    case 'g':
-		groundOffset = stod(optarg);
+	    case 'u':
+		mu = stod(optarg);
+		break;
+	    case 's':
+		stepLength = stoi(optarg);
 		break;
 	    case 'r':
 		reg = stod(optarg);
@@ -173,8 +178,8 @@ int main(int argc, char* argv[])
     vector<VectorXd> velocities;
     vector<VectorXd> accelerations;
     //skeleton->setGravity(Vector3d(0, -9.8, 0));
-
     skeleton->setGravity(Vector3d(0, 0, -9.8));
+
     for (size_t i = 0; i < position_mat.rows(); ++i)
 	positions.push_back(position_mat.row(i));
 
@@ -194,11 +199,11 @@ int main(int argc, char* argv[])
 	c_butterworth_terminate();
     }
 
-    for (size_t i = 0; i < positions.size() - 1; ++i)
-	velocities.push_back(skeleton->getPositionDifferences(positions[i + 1], positions[i]) / frameTime);
+    for (size_t i = 0; i < positions.size() - stepLength; ++i)
+	velocities.push_back(skeleton->getPositionDifferences(positions[i + stepLength], positions[i]) / (stepLength * frameTime));
 
-    for (size_t i = 0; i < velocities.size() - 1; ++i)
-	accelerations.push_back(skeleton->getVelocityDifferences(velocities[i + 1], velocities[i]) / frameTime);
+    for (size_t i = 0; i < velocities.size() - stepLength; ++i)
+	accelerations.push_back(skeleton->getVelocityDifferences(velocities[i + stepLength], velocities[i]) / (stepLength * frameTime));
 
     vector<vector<string>> contactNodes;
     vector<vector<Vector3d>> contactPoints;
@@ -253,8 +258,8 @@ int main(int argc, char* argv[])
 
     SkeletonPtr kin_skeleton = skeleton->cloneSkeleton();
     //size_t f_start = 240, f_end = 300;
-    //size_t f_start = 0, f_end = 500;
-    size_t f_start = 0, f_end = accelerations.size();
+    size_t f_start = 0, f_end = 500;
+    //size_t f_start = 0, f_end = accelerations.size();
 #ifdef FULL_SOLVE
     VectorXd pos = positions[f_start];
     VectorXd vel = velocities[f_start];
@@ -268,7 +273,7 @@ int main(int argc, char* argv[])
 #endif
     
     //for (size_t i = 0; i < accelerations.size(); ++i)
-    for (size_t i = f_start; i < f_end; ++i)
+    for (size_t i = f_start; i < f_end; i += stepLength)
     {
 	cout << "frame " << i << endl;
 	kin_skeleton->setPositions(positions[i]);
@@ -278,7 +283,11 @@ int main(int argc, char* argv[])
 	vel = velocities[i];
 	vel_hat = velocities[i + 1];
 #else
-	vel_hat = skeleton->getPositionDifferences(positions[i + 1], pos) / frameTime;
+	vel_hat = skeleton->getPositionDifferences(positions[i + stepLength], pos) / (stepLength * frameTime);
+	//skeleton->setVelocities(vel);
+	//skeleton->integratePositions(frameTime);
+	//VectorXd pos_n = skeleton->getPositions();
+	//vel_hat = skeleton->getPositionDifferences(positions[i + 2], pos_n) / frameTime;
 #endif
 	skeleton->setPositions(pos);
 	skeleton->setVelocities(vel);
@@ -317,7 +326,7 @@ int main(int argc, char* argv[])
 	size_t m = ndof;
 	size_t n = contactNodes[i].size() * 5 + ndof - 6;
 	//size_t n = contactNodes[i].size() * 5 + ndof;
-	double h = frameTime;
+	double h = stepLength * frameTime;
 	//double h = 1;
 	MatrixXd H(m, n);
 	MatrixXd hMinv = h * M.inverse();
@@ -726,8 +735,9 @@ int main(int argc, char* argv[])
 
 	vel = vel_n;
 	skeleton->setVelocities(vel);
-	skeleton->integratePositions(frameTime);
+	skeleton->integratePositions(stepLength * frameTime);
 	pos = skeleton->getPositions();
+	//vel = vel_n;
 #else
 	pout << positions[i].transpose() << endl;
 	vout << velocities[i].transpose() << endl;
