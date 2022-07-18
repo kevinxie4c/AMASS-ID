@@ -42,9 +42,12 @@ void printUsage(char * prgname)
     cout << "\t-j, --char_file=string" << endl;
     cout << "\t-f, --frame_time=double" << endl;
     cout << "\t-c, --cutoff_freq=double" << endl;
-    cout << "\t-s, --step_length=double" << endl;
+    cout << "\t-u, --mu=double" << endl;
+    cout << "\t-s, --step_length=int" << endl;
     cout << "\t-r, --regularization=double" << endl;
     cout << "\t-o, --outdir=string" << endl;
+    cout << "\t-A, --start_frame=int" << endl;
+    cout << "\t-E, --end_frame=int" << endl;
 }
 
 #if OPTIMIZOR == MOSEK
@@ -76,6 +79,8 @@ int main(int argc, char* argv[])
     string outdir = "output";
     double frameTime = 1.0 / 120.0, cutoffFreq = 2, mu = 1, reg = 0.0001;
     size_t stepLength = 1;
+    size_t startFrame = 0, endFrame = 0;
+    bool endFrameSet = false;
 
     while (1)
     {
@@ -89,13 +94,15 @@ int main(int argc, char* argv[])
 	    { "step_length", required_argument, NULL, 's' },
 	    { "regularization", required_argument, NULL, 'r' },
 	    { "outdir", required_argument, NULL, 'o' },
+	    { "start_frame", required_argument, NULL, 'A' },
+	    { "end_frame", required_argument, NULL, 'E' },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:f:c:u:s:r:o:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:u:s:r:o:A:E:", long_options, &option_index);
 	if (c == -1)
-        break;
+	    break;
 
 	switch (c)
 	{
@@ -119,6 +126,13 @@ int main(int argc, char* argv[])
 		break;
 	    case 'o':
 		outdir = optarg;
+		break;
+	    case 'A':
+		startFrame = stoi(optarg);
+		break;
+	    case 'E':
+		endFrame =  stoi(optarg);
+		endFrameSet = true;
 		break;
 	    default:
 		printUsage(argv[0]);
@@ -257,9 +271,7 @@ int main(int argc, char* argv[])
     */
 
     SkeletonPtr kin_skeleton = skeleton->cloneSkeleton();
-    //size_t f_start = 240, f_end = 300;
-    size_t f_start = 0, f_end = 500;
-    //size_t f_start = 0, f_end = accelerations.size();
+    size_t f_start = startFrame, f_end = endFrameSet ? endFrame : accelerations.size();
 #ifdef FULL_SOLVE
     VectorXd pos = positions[f_start];
     VectorXd vel = velocities[f_start];
