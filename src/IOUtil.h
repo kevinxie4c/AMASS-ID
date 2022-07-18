@@ -8,5 +8,6 @@
 
 std::vector<double> readListFrom(const std::string &filename);
 std::vector<Eigen::VectorXd> readVectorXdListFrom(const std::string &filename);
+Eigen::MatrixXd readMatrixXFrom(const std::string &filename);
 
 #endif
