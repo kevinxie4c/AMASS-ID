@@ -264,6 +264,8 @@ int main(int argc, char *argv[])
     osg::ref_ptr<dart::gui::osg::ImGuiViewer> viewer = new dart::gui::osg::ImGuiViewer(osg::Vec4(0.1, 0.1, 0.1, 1.0));
     osg::ref_ptr<dart::gui::osg::WorldNode> worldNode = new dart::gui::osg::RealTimeWorldNode(world);
 
+    pointIndices = readVectorXdListFrom(cpiFilename);
+
     if (is_npz)
     {
 	//Py_SetProgramName(argv[0]);
@@ -411,8 +413,6 @@ int main(int argc, char *argv[])
     }
     else
 	positions = readMatrixXFrom(poseFilename);
-
-    pointIndices = readVectorXdListFrom(cpiFilename);
 
     SimCharacter character(jsonFilename);
     skeleton = character.skeleton;

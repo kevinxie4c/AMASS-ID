@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <chrono>
+#include <cstring>
 #include <Eigen/Core>
 #include <getopt.h>
 #include <dart/dart.hpp>
@@ -18,7 +19,6 @@
 #define MOSEK	1
 #define OPTIMIZOR   MOSEK
 #define FULL_SOLVE
-#define USE_SIM_STATE
 
 #if OPTIMIZOR == ALGLIB
 #include "ext/optimization.h"
@@ -48,6 +48,8 @@ void printUsage(char * prgname)
     cout << "\t-o, --outdir=string" << endl;
     cout << "\t-A, --start_frame=int" << endl;
     cout << "\t-E, --end_frame=int" << endl;
+    cout << "\t-F, --filter_type=none|position|velocity" << endl;
+    cout << "\t-S, --use_sim_state" << endl;
 }
 
 #if OPTIMIZOR == MOSEK
@@ -81,6 +83,8 @@ int main(int argc, char* argv[])
     size_t stepLength = 1;
     size_t startFrame = 0, endFrame = 0;
     bool endFrameSet = false;
+    int filterType = 2;	// 0: none; 1: position; 2: velocity.
+    bool useSimState = false;
 
     while (1)
     {
@@ -96,11 +100,13 @@ int main(int argc, char* argv[])
 	    { "outdir", required_argument, NULL, 'o' },
 	    { "start_frame", required_argument, NULL, 'A' },
 	    { "end_frame", required_argument, NULL, 'E' },
+	    { "filter_type", required_argument, NULL, 'F' },
+	    { "use_sim_state", no_argument, NULL, 0 },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:f:c:u:s:r:o:A:E:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:u:s:r:o:A:E:F:S", long_options, &option_index);
 	if (c == -1)
 	    break;
 
@@ -131,8 +137,24 @@ int main(int argc, char* argv[])
 		startFrame = stoi(optarg);
 		break;
 	    case 'E':
-		endFrame =  stoi(optarg);
+		endFrame = stoi(optarg);
 		endFrameSet = true;
+		break;
+	    case 'F':
+		if (strcmp(optarg, "none") == 0)
+		    filterType = 0;
+		else if (strcmp(optarg, "position") == 0)
+		    filterType = 1;
+		else if (strcmp(optarg, "velocity") == 0)
+		    filterType = 2;
+		else
+		{
+		    cout << "unknown filter_type: " << optarg << endl;
+		    exit(0);
+		}
+		break;
+	    case 'S':
+		useSimState = true;
 		break;
 	    default:
 		printUsage(argv[0]);
@@ -198,7 +220,8 @@ int main(int argc, char* argv[])
 	positions.push_back(position_mat.row(i));
 
     size_t ndof = skeleton->getDofs().size();
-    if (cutoffFreq > 0)
+
+    if (filterType == 1)
     {
 	coder::array<double, 1> x, y;
 	vector<VectorXd> tmp(positions);
@@ -215,6 +238,21 @@ int main(int argc, char* argv[])
 
     for (size_t i = 0; i < positions.size() - stepLength; ++i)
 	velocities.push_back(skeleton->getPositionDifferences(positions[i + stepLength], positions[i]) / (stepLength * frameTime));
+
+    if (filterType == 2)
+    {
+	coder::array<double, 1> x, y;
+	vector<VectorXd> tmp(velocities);
+	x.set_size(velocities.size());
+	for (size_t i = 0; i < ndof; ++i)
+	{ for (int j = 0; j < x.size(0); ++j)
+		x[j] = velocities[j][i];
+	    c_butterworth(x, cutoffFreq, 100, y);
+	    for (int j = 0; j < x.size(0); ++j)
+		velocities[j][i] = y[j];
+	}
+	c_butterworth_terminate();
+    }
 
     for (size_t i = 0; i < velocities.size() - stepLength; ++i)
 	accelerations.push_back(skeleton->getVelocityDifferences(velocities[i + stepLength], velocities[i]) / (stepLength * frameTime));
@@ -290,17 +328,20 @@ int main(int argc, char* argv[])
 	cout << "frame " << i << endl;
 	kin_skeleton->setPositions(positions[i]);
 #ifdef FULL_SOLVE
-#ifndef USE_SIM_STATE
-	pos = positions[i];
-	vel = velocities[i];
-	vel_hat = velocities[i + 1];
-#else
-	vel_hat = skeleton->getPositionDifferences(positions[i + stepLength], pos) / (stepLength * frameTime);
-	//skeleton->setVelocities(vel);
-	//skeleton->integratePositions(frameTime);
-	//VectorXd pos_n = skeleton->getPositions();
-	//vel_hat = skeleton->getPositionDifferences(positions[i + 2], pos_n) / frameTime;
-#endif
+	if (!useSimState)
+	{
+	    pos = positions[i];
+	    vel = velocities[i];
+	    vel_hat = velocities[i + 1];
+	}
+	else
+	{
+	    vel_hat = skeleton->getPositionDifferences(positions[i + stepLength], pos) / (stepLength * frameTime);
+	    //skeleton->setVelocities(vel);
+	    //skeleton->integratePositions(frameTime);
+	    //VectorXd pos_n = skeleton->getPositions();
+	    //vel_hat = skeleton->getPositionDifferences(positions[i + 2], pos_n) / frameTime;
+	}
 	skeleton->setPositions(pos);
 	skeleton->setVelocities(vel);
 #else

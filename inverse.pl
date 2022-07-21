@@ -26,6 +26,8 @@ GetOptions(
     "o|outdir=s"=> sub { push @opts, "-$_[0]", $_[1]; $outdir = $_[1] },
     "A|start_frame=i" => \&add_opts,
     "E|end_frame=i" => \&add_opts,
+    "F|filter_type=s" => \&add_opts,
+    "S|use_sim_state" => sub { push @opts, "-$_[0]" },
 );
 
 if (@ARGV != 1) {
@@ -42,6 +44,8 @@ options:
     -o, --outdir=string
     -A, --start_frame=int
     -E, --end_frame=int
+    -F, --filter_type=none|position|velocity
+    -S, --use_sim_state
 USAGE
 } else {
     $pose_file = shift @ARGV;
