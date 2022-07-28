@@ -85,6 +85,8 @@ int main(int argc, char* argv[])
     bool endFrameSet = false;
     int filterType = 2;	// 0: none; 1: position; 2: velocity.
     bool useSimState = false;
+    double rootPosWeight = 0.01;
+    double rootRotWeight = 0.01;
 
     while (1)
     {
@@ -310,11 +312,21 @@ int main(int argc, char* argv[])
 
     SkeletonPtr kin_skeleton = skeleton->cloneSkeleton();
     size_t f_start = startFrame, f_end = endFrameSet ? endFrame : accelerations.size();
+    vector<vector<Vector3d>> transformedContactPoints(contactPoints.size());
 #ifdef FULL_SOLVE
     VectorXd pos = positions[f_start];
     VectorXd vel = velocities[f_start];
     VectorXd vel_n;
     VectorXd vel_hat;
+    MatrixXd W = MatrixXd::Identity(ndof, ndof);
+    if (useSimState)
+    {
+	for (int i = 0; i < 3; ++i)
+	{
+	    W(i, i) = rootRotWeight;
+	    W(3 + i, 3 + i) = rootPosWeight;
+	}
+    }
 #endif
 
 #if OPTIMIZOR == MOSEK
@@ -393,13 +405,15 @@ int main(int argc, char* argv[])
 		const BodyNode *bn = skeleton->getBodyNode(contactNodes[i][j]);
 		const Vector3d &point = contactPoints[i][j];
 		//Isometry3d transform = bn->getWorldTransform();
-		Isometry3d transform = kin_skeleton->getBodyNode(contactNodes[i][j])->getWorldTransform();
+		Isometry3d transform_kin = kin_skeleton->getBodyNode(contactNodes[i][j])->getWorldTransform();
+		Isometry3d transform_sim = skeleton->getBodyNode(contactNodes[i][j])->getWorldTransform();
+		transformedContactPoints[i].push_back(transform_sim * transform_kin.inverse() * point);
 		//MatrixXd Jt = skeleton->getWorldJacobian(bn, transform.inverse() * point).transpose();
 		MatrixXd Jt = skeleton->getWorldJacobian(bn).transpose();
 		MatrixXd B1(6, 3);
 		//B1.topRows(3) = dart::math::makeSkewSymmetric(point);
 		//B1.topRows(3) = dart::math::makeSkewSymmetric(transform.inverse() * point);
-		B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform.translation());
+		B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform_kin.translation());
 		//B1.topRows(3) = Matrix3d::Zero();
 		B1.bottomRows(3) = Matrix3d::Identity();
 		Vector3d normal = Vector3d::UnitZ();
@@ -421,11 +435,11 @@ int main(int argc, char* argv[])
 	//H.rightCols(ndof) = hMinv.rightCols(ndof);
 	MatrixXd hMinvC = hMinv * C;
 	VectorXd d = vel - vel_hat - hMinvC;
-	MatrixXd A = H.transpose() * H;
+	MatrixXd A = H.transpose() * W * H;
 	//A += MatrixXd::Identity(n, n) * reg / n;    // make it positive definite and evenly "spread" the forces
 	for (size_t j = 0; j < contactNodes[i].size() * 5; ++j)
 	    A(j, j) += reg / (contactNodes[i].size() * 5);
-	VectorXd b = H.transpose() * d;
+	VectorXd b = H.transpose() * W * d;
 
 	MSKtask_t task = NULL;
 	size_t num_var = n;
@@ -507,7 +521,7 @@ int main(int argc, char* argv[])
 	{
 	    VectorXd lamb = lambda.segment(j * 5, 5);
 	    Vector3d f = B2list[j] * lamb;
-	    cfout << contactPoints[i][j].transpose() << " " << f.transpose() << " ";
+	    cfout << transformedContactPoints[i][j].transpose() << " " << f.transpose() << " ";
 	}
 	cfout << endl;
 	vel_n = vel - hMinvC + H * lambda;
