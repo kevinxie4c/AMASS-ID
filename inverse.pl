@@ -3,31 +3,32 @@ use Getopt::Long qw(:config no_ignore_case);
 use strict;
 use warnings;
 
-my $char_file = "data/character.json";
-my $frame_time = 1/120;
-my $cutoff_freq = 2;
-my $ground_offset = 0;
-my $reg = 0.0001;
 my $outdir = "output";
 my $pose_file;
-my @opts;
+my @contact_opts;
+my @inverse_opts;
 
-sub add_opts {
-    push @opts, "-$_[0]", $_[1];
+sub add_contact_opts {
+    push @contact_opts, "-$_[0]", $_[1];
+}
+
+sub add_inverse_opts {
+    push @inverse_opts, "-$_[0]", $_[1];
 }
 
 GetOptions(
-    "j|char_file=s" => \&add_opts,
-    "f|frame_time=i" => \&add_opts,
-    "c|cutoff_freq=i" => \&add_opts,
-    "u|mu=f" => \&add_opts,
-    "s|step_length=i" => \&add_opts,
-    "r|regularization=i" => \&add_opts,
-    "o|outdir=s"=> sub { push @opts, "-$_[0]", $_[1]; $outdir = $_[1] },
-    "A|start_frame=i" => \&add_opts,
-    "E|end_frame=i" => \&add_opts,
-    "F|filter_type=s" => \&add_opts,
-    "S|use_sim_state" => sub { push @opts, "-$_[0]" },
+    "j|char_file=s" => \&add_inverse_opts,
+    "f|frame_time=f" => \&add_inverse_opts,
+    "c|cutoff_freq=f" => \&add_inverse_opts,
+    "u|mu=f" => \&add_inverse_opts,
+    "s|step_length=i" => \&add_inverse_opts,
+    "r|regularization=f" => \&add_inverse_opts,
+    "o|outdir=s"=> sub { push @inverse_opts, "-$_[0]", $_[1]; push @contact_opts, "-$_[0]", $_[1]; $outdir = $_[1] },
+    "A|start_frame=i" => \&add_inverse_opts,
+    "E|end_frame=i" => \&add_inverse_opts,
+    "F|filter_type=s" => \&add_inverse_opts,
+    "S|use_sim_state" => sub { push @inverse_opts, "-$_[0]" },
+    "t|threshold=f" => \&add_contact_opts,
 );
 
 if (@ARGV != 1) {
@@ -46,6 +47,7 @@ options:
     -E, --end_frame=int
     -F, --filter_type=none|position|velocity
     -S, --use_sim_state
+    -t, --threshold=double
 USAGE
 } else {
     $pose_file = shift @ARGV;
@@ -54,9 +56,9 @@ USAGE
 mkdir $outdir unless -e $outdir;
 
 my @cmd;
-@cmd = ('python', 'find-contact-node.py', $pose_file, $outdir);
+@cmd = ('python', 'find-contact-node.py', @contact_opts, $pose_file);
 print "@cmd\n";
 system @cmd;
-@cmd = ('./inverse.out', @opts, $pose_file, "$outdir/contact_nodes.txt");
+@cmd = ('./inverse.out', @inverse_opts, $pose_file, "$outdir/contact_nodes.txt");
 print "@cmd\n";
 system @cmd;

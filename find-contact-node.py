@@ -1,5 +1,6 @@
 import sys
 import os
+import argparse
 import torch
 import numpy as np
 
@@ -7,17 +8,17 @@ from human_body_prior.tools.omni_tools import copy2cpu as c2c
 from human_body_prior.body_model.body_model import BodyModel
 from numpy import linalg
 
-if len(sys.argv) < 2:
-    print("usage: {} filename.npz [outdir]".format(sys.argv[0]))
-    sys.exit()
+parser = argparse.ArgumentParser()
+parser.add_argument('-t', '--threshold', action='store', default=0.1, type=float, help='velocity threshold for detecting contact points (default: 0.1)')
+parser.add_argument('-o', '--outdir', action='store', default="output",  help='output folder (default: output)')
+parser.add_argument('pose_file')
+args = parser.parse_args()
 
 bindir = os.path.abspath(os.path.dirname(__file__))
 
-amass_npz_fname = sys.argv[1]
-outdir = "output"
-if len(sys.argv) == 3:
-    outdir = sys.argv[2]
-threshold = 0.1
+amass_npz_fname = args.pose_file
+outdir = args.outdir
+threshold = args.threshold
 
 comp_device = torch.device('cpu')
 #amass_npz_fname = 'SFU/0005/0005_Walking001_poses.npz'
