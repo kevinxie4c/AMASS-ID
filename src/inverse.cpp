@@ -439,11 +439,6 @@ int main(int argc, char* argv[])
 	//H.rightCols(ndof) = hMinv.rightCols(ndof);
 	MatrixXd hMinvC = hMinv * C;
 	VectorXd d = vel - vel_hat - hMinvC;
-	MatrixXd A = H.transpose() * W * H;
-	//A += MatrixXd::Identity(n, n) * reg / n;    // make it positive definite and evenly "spread" the forces
-	for (size_t j = 0; j < contactNodes[i].size() * 5; ++j)
-	    A(j, j) += reg / (contactNodes[i].size() * 5);
-	VectorXd b = H.transpose() * W * d;
 
 	MSKtask_t task = NULL;
 #ifdef CONIC_OPTIMIZATION
@@ -508,6 +503,12 @@ int main(int argc, char* argv[])
 	    csub[i + 1] = n + i;
 	mosekOK(MSK_appendcone(task, MSK_CT_QUAD, 0.0, csub.size(), csub.data()));
 #else
+	MatrixXd A = H.transpose() * W * H;
+	//A += MatrixXd::Identity(n, n) * reg / n;    // make it positive definite and evenly "spread" the forces
+	for (size_t j = 0; j < contactNodes[i].size() * 5; ++j)
+	    A(j, j) += reg / (contactNodes[i].size() * 5);
+	VectorXd b = H.transpose() * W * d;
+
 	size_t num_var = n;
 	size_t num_con = 4 * contactNodes[i].size();
 	mosekOK(MSK_maketask(env, num_con, num_var, &task));
@@ -600,7 +601,7 @@ int main(int argc, char* argv[])
 	VectorXd err = vel_n - vel_hat;
 	eout << err.norm() << endl;
 	cout << "err1 " << err.norm() << endl;
-	cout << "err2 " << (lambda.transpose() * A * lambda + 2 * b.transpose() * lambda + d.transpose() * d).cwiseSqrt() << endl;
+	//cout << "err2 " << (lambda.transpose() * A * lambda + 2 * b.transpose() * lambda + d.transpose() * d).cwiseSqrt() << endl;
 	cout << "err3 " << (H * lambda + vel - hMinvC - vel_hat).norm() << endl;
 	VectorXd acc = M.colPivHouseholderQr().solve(JtB * lambda.head(contactNodes[i].size() * 5) + Q - C);
 	cout << "err4 " << (velocities[i] + acc * h - velocities[i + 1]).norm() << endl;
