@@ -29,6 +29,7 @@ GetOptions(
     "F|filter_type=s" => \&add_inverse_opts,
     "S|use_sim_state" => sub { push @inverse_opts, "-$_[0]" },
     "t|threshold=f" => \&add_contact_opts,
+    "g|ground=f"    => \&add_contact_opts,
 );
 
 if (@ARGV != 1) {
@@ -48,6 +49,7 @@ options:
     -F, --filter_type=none|position|velocity
     -S, --use_sim_state
     -t, --threshold=double
+    -g, --ground=double
 USAGE
 } else {
     $pose_file = shift @ARGV;

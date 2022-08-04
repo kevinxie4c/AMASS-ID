@@ -10,6 +10,7 @@ from numpy import linalg
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--threshold', action='store', default=0.1, type=float, help='velocity threshold for detecting contact points (default: 0.1)')
+parser.add_argument('-g', '--ground', action='store', default=0.02, type=float, help='ground height (default: 0.02)')
 parser.add_argument('-o', '--outdir', action='store', default="output",  help='output folder (default: output)')
 parser.add_argument('pose_file')
 args = parser.parse_args()
@@ -19,6 +20,8 @@ bindir = os.path.abspath(os.path.dirname(__file__))
 amass_npz_fname = args.pose_file
 outdir = args.outdir
 threshold = args.threshold
+ground = args.ground
+all_nodes = True
 
 comp_device = torch.device('cpu')
 #amass_npz_fname = 'SFU/0005/0005_Walking001_poses.npz'
@@ -79,35 +82,75 @@ d = 0
 f_node = open(outdir + '/contact_nodes.txt', 'w')
 f_pt_idx = open(outdir + '/contact_point_indices.txt', 'w')
 
+joint_names = [
+'pelvis',
+'lThigh',
+'rThigh',
+'abdomen',
+'lCalf',
+'rCalf',
+'chest1',
+'lFoot',
+'rFoot',
+'chest2',
+'lSole',
+'rSole',
+'neck',
+'lShoulder',
+'rShoulder',
+'head',
+'lUpperArm',
+'rUpperArm',
+'lForearm',
+'rForearm',
+'lHand',
+'rHand',
+]
+
 for i in range(0, frame_length - 1):
     dx = body_pose_beta.v[i+1] - body_pose_beta.v[i]
     pts = body_pose_beta.v[i].numpy()
     vel = dx / dt
     vel_norm = linalg.norm(vel, axis=1)
-    lFoot = []
-    rFoot = []
-    indices = np.where(np.logical_and(vel_norm < threshold, np.abs(pts.dot(n) + d) < 0.02))[0]
+    #indices = np.where(vel_norm < threshold)[0]
+    indices = np.where(np.logical_and(vel_norm < threshold, np.abs(pts.dot(n) + d) < ground))[0]
     f_pt_idx.write(' '.join(str(x) for x in indices) + "\n")
-    for j in indices:
-        x = par_vtx[j]
-        if int(x) == 4 or int(x) == 7 or int(x) == 10:
-            lFoot.append(pts[j])
-        if int(x) == 5 or int(x) == 8 or int(x) == 11:
-            rFoot.append(pts[j])
-    #contact_nodes = []
-    if len(lFoot) > 0:
-        #v = np.mean(np.stack(lFoot), axis=0)
-        #contact_nodes.append('lFoot {} {} {}'.format(v[0], v[1], v[2]))
-        f_node.write('lFoot {} '.format(len(lFoot)))
-        for v in lFoot:
-            f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
-    if len(rFoot) > 0:
-        #v = np.mean(np.stack(rFoot), axis=0)
-        #contact_nodes.append('rFoot {} {} {}'.format(v[0], v[1], v[2]))
-        f_node.write('rFoot {} '.format(len(rFoot)))
-        for v in rFoot:
-            f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
-    #f_node.write(' '.join(contact_nodes) + "\n")
+    if all_nodes:
+        contacts = []
+        for j in range(len(joint_names)):
+            contacts.append([])
+        for j in indices:
+            x = par_vtx[j]
+            if int(x) < len(contacts):
+                contacts[int(x)].append(pts[j])
+        for k in range(len(joint_names)):
+            if len(contacts[k]) > 0:
+                f_node.write('{} {} '.format(joint_names[k], len(contacts[k])))
+                for v in contacts[k]:
+                    f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
+    else:
+        lFoot = []
+        rFoot = []
+        for j in indices:
+            x = par_vtx[j]
+            if int(x) == 4 or int(x) == 7 or int(x) == 10:
+                lFoot.append(pts[j])
+            if int(x) == 5 or int(x) == 8 or int(x) == 11:
+                rFoot.append(pts[j])
+        #contact_nodes = []
+        if len(lFoot) > 0:
+            #v = np.mean(np.stack(lFoot), axis=0)
+            #contact_nodes.append('lFoot {} {} {}'.format(v[0], v[1], v[2]))
+            f_node.write('lFoot {} '.format(len(lFoot)))
+            for v in lFoot:
+                f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
+        if len(rFoot) > 0:
+            #v = np.mean(np.stack(rFoot), axis=0)
+            #contact_nodes.append('rFoot {} {} {}'.format(v[0], v[1], v[2]))
+            f_node.write('rFoot {} '.format(len(rFoot)))
+            for v in rFoot:
+                f_node.write('{} {} {} '.format(v[0], v[1], v[2]))
+        #f_node.write(' '.join(contact_nodes) + "\n")
     f_node.write("\n")
 
 f_node.close()
