@@ -19,6 +19,7 @@
 #define MOSEK	1
 #define OPTIMIZOR   MOSEK
 #define FULL_SOLVE
+#define CONIC_OPTIMIZATION
 
 #if OPTIMIZOR == ALGLIB
 #include "ext/optimization.h"
@@ -85,8 +86,10 @@ int main(int argc, char* argv[])
     bool endFrameSet = false;
     int filterType = 2;	// 0: none; 1: position; 2: velocity.
     bool useSimState = false;
-    double rootPosWeight = 0.01;
-    double rootRotWeight = 0.01;
+    //double rootPosWeight = 0.01;
+    //double rootRotWeight = 0.01;
+    double rootPosWeight = 1;
+    double rootRotWeight = 1;
 
     while (1)
     {
@@ -388,6 +391,7 @@ int main(int argc, char* argv[])
 	//}
 
 #ifdef FULL_SOLVE
+	std::chrono::steady_clock::time_point time_p = std::chrono::steady_clock::now();
 	size_t m = ndof;
 	size_t n = contactNodes[i].size() * 5 + ndof - 6;
 	//size_t n = contactNodes[i].size() * 5 + ndof;
@@ -442,6 +446,68 @@ int main(int argc, char* argv[])
 	VectorXd b = H.transpose() * W * d;
 
 	MSKtask_t task = NULL;
+#ifdef CONIC_OPTIMIZATION
+	size_t num_var = n + m + 1; // x = (lambda, xi, t)
+	size_t num_con = 4 * contactNodes[i].size() + m;
+	mosekOK(MSK_maketask(env, num_con, num_var, &task));
+	mosekOK(MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr));
+	mosekOK(MSK_appendcons(task, num_con));
+	mosekOK(MSK_appendvars(task, num_var));
+
+	// set up linear term in the objective
+	for (size_t j = 0; j < num_var - 1; ++j)
+	    mosekOK(MSK_putcj(task, j, 0.0));
+	mosekOK(MSK_putcj(task, num_var - 1, 1.0));
+
+	// box constraints
+	for (size_t j = 0; j < contactNodes[i].size() * 5; ++j)
+	    mosekOK(MSK_putvarbound(task, j, MSK_BK_LO, 0.0, +MSK_INFINITY));
+	for (size_t j = contactNodes[i].size() * 5; j < num_var; ++j)
+	    mosekOK(MSK_putvarbound(task, j, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY));
+
+	// linear constraints
+	vector<MSKint32t> asubi, asubj;
+	vector<double> aval;
+	for (size_t j = 0; j < contactNodes[i].size(); ++j)
+	{
+	    for (size_t k = 0; k < 4; ++k)
+	    {
+		//mosekOK(MSK_putaij(task, 4 * j + k, 5 * j + 0, mu));
+		asubi.push_back(4 * j + k);
+		asubj.push_back(5 * j + 0);
+		aval.push_back(mu);
+		//mosekOK(MSK_putaij(task, 4 * j + k, 5 * j + k + 1, -1));
+		asubi.push_back(4 * j + k);
+		asubj.push_back(5 * j + k + 1);
+		aval.push_back(-1.0);
+		mosekOK(MSK_putconbound(task, 4 * j + k, MSK_BK_LO, 0.0, +MSK_INFINITY));
+	    }
+	}
+	for (size_t j = 0; j < m; ++j)
+	{
+	    for (size_t k = 0; k < n; ++k)
+		if (abs(H(j, k)) > 1e-8)
+		{
+		    //mosekOK(MSK_putaij(task, 4 * contactNodes[i].size() + j, k, -H(j, k)));
+		    asubi.push_back(4 * contactNodes[i].size() + j);
+		    asubj.push_back(k);
+		    aval.push_back(-H(j, k));
+		}
+	    //mosekOK(MSK_putaij(task, 4 * contactNodes[i].size() + j, n + j, 1.0));
+	    asubi.push_back(4 * contactNodes[i].size() + j);
+	    asubj.push_back(n + j);
+	    aval.push_back(1.0);
+	    mosekOK(MSK_putconbound(task, 4 * contactNodes[i].size() + j, MSK_BK_FX, d[j], d[j]));
+	}
+	mosekOK(MSK_putaijlist(task, aval.size(), asubi.data(), asubj.data(), aval.data()));
+
+	// conic constraints
+	vector<MSKint32t> csub(m + 1);
+	csub[0] = n + m; // t
+	for (size_t i = 0; i < m; ++i)
+	    csub[i + 1] = n + i;
+	mosekOK(MSK_appendcone(task, MSK_CT_QUAD, 0.0, csub.size(), csub.data()));
+#else
 	size_t num_var = n;
 	size_t num_con = 4 * contactNodes[i].size();
 	mosekOK(MSK_maketask(env, num_con, num_var, &task));
@@ -456,7 +522,7 @@ int main(int argc, char* argv[])
 	{
 	    for (size_t j = 0; j <= i; ++j)
 	    {
-		if (abs(A(i, j)) > 1e-8)
+		//if (abs(A(i, j)) > 1e-8)
 		{
 		    qsubi.push_back(i);
 		    qsubj.push_back(j);
@@ -482,7 +548,8 @@ int main(int argc, char* argv[])
 		mosekOK(MSK_putconbound(task, 4 * j + k, MSK_BK_LO, 0.0, +MSK_INFINITY));
 	    }
 	}
-	//cout << "matrix construction (Mosek): " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_p).count() << " ms" << endl;
+#endif
+	cout << "matrix construction (Mosek): " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_p).count() << " ms" << endl;
 	MSKrescodee trmcode;
 	mosekOK(MSK_optimizetrm(task, &trmcode));
 	MSK_solutionsummary(task, MSK_STREAM_MSG);
@@ -513,6 +580,11 @@ int main(int argc, char* argv[])
 	VectorXd lambda(n);
 	for (size_t i = 0; i < n; ++i)
 	    lambda[i] = x[i];
+	//VectorXd xi(m);
+	//for (size_t i = 0; i < m; ++i)
+	//    xi[i] = x[n + i];
+	//cout << "xi " << xi.transpose() << endl;
+	//cout << "t " << x[n + m] << endl;;
 	VectorXd Q = VectorXd::Zero(ndof);
 	Q.tail(ndof - 6) = lambda.tail(ndof - 6);
 	//Q = lambda.tail(ndof);
