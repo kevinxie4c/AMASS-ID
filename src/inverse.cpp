@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
     }
 
     SimCharacter character(jsonFilename);
-    //WorldPtr world = World::create();
+    WorldPtr world = World::create();
     SkeletonPtr &skeleton = character.skeleton;
 
     std::vector<dart::dynamics::BodyNode*> bns = skeleton->getBodyNodes();
@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
     position_mat.middleCols(3, 3) = trans;
     position_mat.rightCols(poses.cols() - 3) = poses.rightCols(poses.cols() - 3);
 
-    //world->addSkeleton(skeleton);
+    world->addSkeleton(skeleton);
     vector<VectorXd> positions;
     vector<VectorXd> velocities;
     vector<VectorXd> accelerations;
@@ -507,7 +507,7 @@ int main(int argc, char* argv[])
 	mosekOK(MSK_putaijlist(task, aval.size(), asubi.data(), asubj.data(), aval.data()));
 
 	// conic constraints
-	vector<MSKint32t> csub(m + 1);
+	vector<MSKint32t> csub(m + n + 1);
 	csub[0] = n + m + n; // t
 	for (size_t i = 0; i < m + n; ++i)
 	    csub[i + 1] = n + i;
