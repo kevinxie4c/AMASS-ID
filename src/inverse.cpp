@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
     }
 
     SimCharacter character(jsonFilename);
-    WorldPtr world = World::create();
+    //WorldPtr world = World::create();
     SkeletonPtr &skeleton = character.skeleton;
 
     std::vector<dart::dynamics::BodyNode*> bns = skeleton->getBodyNodes();
@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
     position_mat.middleCols(3, 3) = trans;
     position_mat.rightCols(poses.cols() - 3) = poses.rightCols(poses.cols() - 3);
 
-    world->addSkeleton(skeleton);
+    //world->addSkeleton(skeleton);
     vector<VectorXd> positions;
     vector<VectorXd> velocities;
     vector<VectorXd> accelerations;
@@ -442,8 +442,8 @@ int main(int argc, char* argv[])
 
 	MSKtask_t task = NULL;
 #ifdef CONIC_OPTIMIZATION
-	size_t num_var = n + m + 1; // x = (lambda, xi, t)
-	size_t num_con = 4 * contactNodes[i].size() + m;
+	size_t num_var = n + m + n + 1; // x = (lambda, xi_1 xi_2, t)
+	size_t num_con = 4 * contactNodes[i].size() + m + n;
 	mosekOK(MSK_maketask(env, num_con, num_var, &task));
 	mosekOK(MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr));
 	mosekOK(MSK_appendcons(task, num_con));
@@ -494,12 +494,22 @@ int main(int argc, char* argv[])
 	    aval.push_back(1.0);
 	    mosekOK(MSK_putconbound(task, 4 * contactNodes[i].size() + j, MSK_BK_FX, d[j], d[j]));
 	}
+	for (size_t j = 0; j < n; ++j)
+	{
+	    asubi.push_back(4 * contactNodes[i].size() + m + j);
+	    asubj.push_back(j);
+	    aval.push_back(sqrt(reg));
+	    asubi.push_back(4 * contactNodes[i].size() + m + j);
+	    asubj.push_back(n + m + j);
+	    aval.push_back(-1.0);
+	    mosekOK(MSK_putconbound(task, 4 * contactNodes[i].size() + m + j, MSK_BK_FX, 0.0, 0.0));
+	}
 	mosekOK(MSK_putaijlist(task, aval.size(), asubi.data(), asubj.data(), aval.data()));
 
 	// conic constraints
 	vector<MSKint32t> csub(m + 1);
-	csub[0] = n + m; // t
-	for (size_t i = 0; i < m; ++i)
+	csub[0] = n + m + n; // t
+	for (size_t i = 0; i < m + n; ++i)
 	    csub[i + 1] = n + i;
 	mosekOK(MSK_appendcone(task, MSK_CT_QUAD, 0.0, csub.size(), csub.data()));
 #else
