@@ -498,7 +498,7 @@ int main(int argc, char* argv[])
 	{
 	    asubi.push_back(4 * contactNodes[i].size() + m + j);
 	    asubj.push_back(j);
-	    aval.push_back(sqrt(reg));
+	    aval.push_back(sqrt(reg / n));
 	    asubi.push_back(4 * contactNodes[i].size() + m + j);
 	    asubj.push_back(n + m + j);
 	    aval.push_back(-1.0);
