@@ -225,8 +225,8 @@ int main(int argc, char* argv[])
     vector<VectorXd> positions;
     vector<VectorXd> velocities;
     vector<VectorXd> accelerations;
-    //skeleton->setGravity(Vector3d(0, -9.8, 0));
-    skeleton->setGravity(Vector3d(0, 0, -9.8));
+    //skeleton->setGravity(Vector3d(0, -9.8, 0));   // y-axis points up
+    skeleton->setGravity(Vector3d(0, 0, -9.8));	    // z-axis points up
 
     for (size_t i = 0; i < position_mat.rows(); ++i)
 	positions.push_back(position_mat.row(i));
@@ -430,7 +430,10 @@ int main(int argc, char* argv[])
 		    B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform_kin.translation());
 		    //B1.topRows(3) = Matrix3d::Zero();
 		    B1.bottomRows(3) = Matrix3d::Identity();
-		    Vector3d normal = Vector3d::UnitZ();
+		    //Vector3d normal = Vector3d::UnitY();	// y-axis points up
+		    //Vector3d tangent1 = Vector3d::UnitX();
+		    //Vector3d tangent2 = Vector3d::UnitZ();
+		    Vector3d normal = Vector3d::UnitZ();	// z-axis points up
 		    Vector3d tangent1 = Vector3d::UnitX();
 		    Vector3d tangent2 = Vector3d::UnitY();
 		    MatrixXd B2(3, 5);
@@ -619,8 +622,8 @@ int main(int argc, char* argv[])
 	    cfout << endl;
 	    vel_n = vel - hMinvC + H * lambda;
 	    VectorXd err = vel_n - vel_hat;
-	    //eout << err.norm() << endl;
-	    eout << err.head(6).norm() << endl;
+	    eout << err.norm() << endl;
+	    //eout << err.head(6).norm() << endl;
 	    cout << "err1 " << err.norm() << endl;
 	    //cout << "err2 " << (lambda.transpose() * A * lambda + 2 * b.transpose() * lambda + d.transpose() * d).cwiseSqrt() << endl;
 	    cout << "err3 " << (H * lambda + vel - hMinvC - vel_hat).norm() << endl;
@@ -683,7 +686,10 @@ int main(int argc, char* argv[])
 			MatrixXd B1(6, 3);
 			B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform_kin.translation());
 			B1.bottomRows(3) = Matrix3d::Identity();
-			Vector3d normal = Vector3d::UnitZ();
+			//Vector3d normal = Vector3d::UnitY();	// y-axis points up
+			//Vector3d tangent1 = Vector3d::UnitX();
+			//Vector3d tangent2 = Vector3d::UnitZ();
+			Vector3d normal = Vector3d::UnitZ();	// z-axis points up
 			Vector3d tangent1 = Vector3d::UnitX();
 			Vector3d tangent2 = Vector3d::UnitY();
 			MatrixXd B2(3, 5);
@@ -926,7 +932,10 @@ int main(int argc, char* argv[])
 		B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform.translation());
 		//B1.topRows(3) = Matrix3d::Zero();
 		B1.bottomRows(3) = Matrix3d::Identity();
-		Vector3d normal = Vector3d::UnitZ();
+		//Vector3d normal = Vector3d::UnitY();	// y-axis points up
+		//Vector3d tangent1 = Vector3d::UnitX();
+		//Vector3d tangent2 = Vector3d::UnitZ();
+		Vector3d normal = Vector3d::UnitZ();	// z-axis points up
 		Vector3d tangent1 = Vector3d::UnitX();
 		Vector3d tangent2 = Vector3d::UnitY();
 		MatrixXd B2(3, 5);

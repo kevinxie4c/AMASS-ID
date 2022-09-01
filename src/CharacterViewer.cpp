@@ -16,13 +16,14 @@
 #include "PyUtil.h"
 #include "IOUtil.h"
 
-int frame = 0;
 double forceScale = 0.003;
 double epsilon = 0.01;
 float meshAlpha = 0.3;
 bool inverted = false;
 bool transparent = true;
 bool playing = false;
+bool showWorldFrame = false;
+
 Eigen::MatrixXd positions;
 dart::dynamics::SkeletonPtr skeleton = nullptr;
 osg::ref_ptr<osg::Geometry> mesh;
@@ -31,8 +32,10 @@ std::vector<Eigen::VectorXd> pointIndices;
 std::vector<Eigen::VectorXd> contacts;
 osg::ref_ptr<osg::Group> group;
 osg::StateSet *stateSet;
+size_t startFrame = 0, endFrame = 200;
+int frame = startFrame;
 
-osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end)
+osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end, const osg::Vec4 &color = osg::Vec4(0.0, 1.0, 0.0, 1.0))
 {
     osg::Vec3 dir = end - start;
     osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform();
@@ -40,11 +43,11 @@ osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end)
     osg::ref_ptr<osg::ShapeDrawable> cylinder = new osg::ShapeDrawable();
     osg::ref_ptr<osg::Shape> cylinderShape = new osg::Cylinder(osg::Vec3(0, 0, dir.length() / 2), 0.002, dir.length());
     cylinder->setShape(cylinderShape.get());
-    cylinder->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+    cylinder->setColor(color);
     osg::ref_ptr<osg::ShapeDrawable> cone = new osg::ShapeDrawable();
     osg::ref_ptr<osg::Shape> coneShape = new osg::Cone(osg::Vec3(0, 0, dir.length()), 0.004, 0.008);
     cone->setShape(coneShape.get());
-    cone->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
+    cone->setColor(color);
     node->addDrawable(cylinder.get());
     node->addDrawable(cone.get());
     dir.normalize();
@@ -63,9 +66,15 @@ public:
     {
 	osg::Group *group = (osg::Group*)node;
 	group->removeChildren(0, group->getNumChildren());
-	for (size_t i = 0; i < contacts[frame].rows(); i += 6)
+	if (showWorldFrame)
 	{
-	    const Eigen::VectorXd &v = contacts[frame];
+	    group->addChild(makeArrow(osg::Vec3(0, 0, 0), osg::Vec3(1, 0, 0), osg::Vec4(1, 0, 0, 1)));
+	    group->addChild(makeArrow(osg::Vec3(0, 0, 0), osg::Vec3(0, 1, 0), osg::Vec4(0, 1, 0, 1)));
+	    group->addChild(makeArrow(osg::Vec3(0, 0, 0), osg::Vec3(0, 0, 1), osg::Vec4(0, 0, 1, 1)));
+	}
+	const Eigen::VectorXd &v = contacts[frame];
+	for (size_t i = 0; i < v.rows(); i += 6)
+	{
 	    //osg::ref_ptr<osg::ShapeDrawable> shape = new osg::ShapeDrawable();
 	    //shape->setShape(new osg::Sphere(osg::Vec3(v[i + 0], v[i + 1], v[i + 2]), 0.02));
 	    //shape->setColor(osg::Vec4(0.0, 1.0, 0.0, 1.0));
@@ -98,11 +107,15 @@ public:
 	ImGui::SetNextWindowSize(ImVec2(2000, 200));
 	ImGui::Begin("Control");
 	//ImGui::SliderInt("frame", &frame, 0, positions.rows() - 1);
-	ImGui::SliderInt("frame", &frame, 0, 499);
+	ImGui::SliderInt("frame", &frame, startFrame, endFrame - 1);
 	ImGui::Checkbox("Inverted contact force", &inverted);
 	ImGui::Checkbox("Transparent mesh", &transparent);
+	ImGui::Checkbox("Show world frame", &showWorldFrame);
 	ImGui::SliderFloat("Alpha", &meshAlpha, 0.0f, 1.0f);
 	ImGui::End();
+	if (showWorldFrame)
+	{
+	}
 	if (transparent)
 	{
 	    stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
@@ -186,7 +199,7 @@ public:
 		}
 		break;
 	    case osgGA::GUIEventAdapter::FRAME:
-		if (playing && frame < 499)
+		if (playing && frame < endFrame)
 		    ++frame;
 		return true;
 	}
