@@ -32,7 +32,7 @@ std::vector<Eigen::VectorXd> pointIndices;
 std::vector<Eigen::VectorXd> contacts;
 osg::ref_ptr<osg::Group> group;
 osg::StateSet *stateSet;
-size_t startFrame = 0, endFrame = 200;
+size_t startFrame = 0, endFrame = 999;
 int frame = startFrame;
 
 osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end, const osg::Vec4 &color = osg::Vec4(0.0, 1.0, 0.0, 1.0))
@@ -217,6 +217,8 @@ void printUsage(char * prgname)
     std::cout << "options:" << std::endl;
     std::cout << "\t-j, --char_file=string" << std::endl;
     std::cout << "\t-p, --pose_file=string" << std::endl;
+    std::cout << "\t-A, --start_frame=int" << std::endl;
+    std::cout << "\t-E, --end_frame=int" << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -234,11 +236,13 @@ int main(int argc, char *argv[])
 	{
 	    { "char_file", required_argument, NULL, 'j' },
 	    { "pose_file", required_argument, NULL, 'p' },
+	    { "start_frame", required_argument, NULL, 'A' },
+	    { "end_frame", required_argument, NULL, 'E' },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:p:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:p:A:E:", long_options, &option_index);
 	if (c == -1)
         break;
 
@@ -249,6 +253,12 @@ int main(int argc, char *argv[])
 		break;
 	    case 'p':
 		poseFilename = optarg;
+		break;
+	    case 'A':
+		startFrame = std::stoi(optarg);
+		break;
+	    case 'E':
+		endFrame = std::stoi(optarg);
 		break;
 	    default:
 		printUsage(argv[0]);
@@ -268,7 +278,10 @@ int main(int argc, char *argv[])
 	exit(0);
     }
 
+    frame = startFrame;
+
     dart::simulation::WorldPtr world = dart::simulation::World::create();
+    world->setGravity(Eigen::Vector3d::Zero());
     osg::ref_ptr<dart::gui::osg::ImGuiViewer> viewer = new dart::gui::osg::ImGuiViewer(osg::Vec4(0.1, 0.1, 0.1, 1.0));
     osg::ref_ptr<dart::gui::osg::WorldNode> worldNode = new dart::gui::osg::RealTimeWorldNode(world);
 

@@ -95,7 +95,6 @@ std::vector<Eigen::MatrixXd> npa2mat_vector(PyObject *npa)
     //Py_DECREF(pValue);
     Py_DECREF(pShape);
 
-    l = 500;
     std::vector<Eigen::MatrixXd> list;
     for (int k = 0; k < l; ++k)
     {
