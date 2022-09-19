@@ -34,6 +34,7 @@ osg::ref_ptr<osg::Group> group;
 osg::StateSet *stateSet;
 size_t startFrame = 0, endFrame = 999;
 int frame = startFrame;
+int frameOffset = 0;
 
 osg::ref_ptr<osg::Node> makeArrow(const osg::Vec3 &start, const osg::Vec3 &end, const osg::Vec4 &color = osg::Vec4(0.0, 1.0, 0.0, 1.0))
 {
@@ -134,7 +135,7 @@ public:
 	    osg::Vec4Array* colorArray = static_cast<osg::Vec4Array*>(mesh->getColorArray());
 	    for (int i = 0; i < vertices[0].rows(); ++i)
 	    {
-		const Eigen::VectorXd &v = vertices[frame].row(i);
+		const Eigen::VectorXd &v = vertices[frameOffset + frame].row(i);
 		(*vertexArray)[i] = osg::Vec3(v[0], v[1], v[2]);
 		(*colorArray)[i] = osg::Vec4(1.0, 1.0, 1.0, meshAlpha);
 	    }
@@ -219,6 +220,7 @@ void printUsage(char * prgname)
     std::cout << "\t-p, --pose_file=string" << std::endl;
     std::cout << "\t-A, --start_frame=int" << std::endl;
     std::cout << "\t-E, --end_frame=int" << std::endl;
+    std::cout << "\t-F, --frame_offset=int" << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -238,11 +240,12 @@ int main(int argc, char *argv[])
 	    { "pose_file", required_argument, NULL, 'p' },
 	    { "start_frame", required_argument, NULL, 'A' },
 	    { "end_frame", required_argument, NULL, 'E' },
+	    { "frame_offset", required_argument, NULL, 'F' },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:p:A:E:", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:p:A:E:F:", long_options, &option_index);
 	if (c == -1)
         break;
 
@@ -259,6 +262,9 @@ int main(int argc, char *argv[])
 		break;
 	    case 'E':
 		endFrame = std::stoi(optarg);
+		break;
+	    case 'F':
+		frameOffset = std::stoi(optarg);
 		break;
 	    default:
 		printUsage(argv[0]);
@@ -381,7 +387,7 @@ int main(int argc, char *argv[])
     osg::ref_ptr<osg::Vec3Array> vertexArray = new osg::Vec3Array();
     osg::ref_ptr<osg::Vec4Array> colorArray = new osg::Vec4Array();
     osg::ref_ptr<osg::DrawElementsUInt> indexArray = new osg::DrawElementsUInt(GL_TRIANGLES);
-    for (int i = 0; i < vertices[0].rows(); ++i)
+    for (int i = 0; i < vertices[frameOffset].rows(); ++i)
     {
 	const Eigen::VectorXd &v = vertices[0].row(i);
 	vertexArray->push_back(osg::Vec3(v[0], v[1], v[2]));
