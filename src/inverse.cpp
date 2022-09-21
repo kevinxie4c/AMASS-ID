@@ -55,6 +55,7 @@ void printUsage(char * prgname)
     cout << "\t-R, --root_rot_weight" << endl;
     cout << "\t-T, --root_trans_weight" << endl;
     cout << "\t-S, --use_sim_state" << endl;
+    cout << "\t-U, --enable_root_force" << endl;
 }
 
 #if OPTIMIZOR == MOSEK
@@ -93,6 +94,7 @@ int main(int argc, char* argv[])
     bool useSimState = false;
     double rootRotWeight = 0;
     double rootTransWeight = 0;
+    bool enableRootForce = false;
 
     while (1)
     {
@@ -113,11 +115,12 @@ int main(int argc, char* argv[])
 	    { "root_rot_weight", required_argument, NULL, 'R' },
 	    { "root_trans_weight", required_argument, NULL, 'T' },
 	    { "use_sim_state", no_argument, NULL, 0 },
+	    { "enable_root_force", no_argument, NULL, 0 },
 	    { 0, 0, 0, 0 }
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:f:c:u:s:r:n:o:A:E:F:R:T:S", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:u:s:r:n:o:A:E:F:R:T:SU", long_options, &option_index);
 	if (c == -1)
 	    break;
 
@@ -175,6 +178,9 @@ int main(int argc, char* argv[])
 		break;
 	    case 'S':
 		useSimState = true;
+		break;
+	    case 'U':
+		enableRootForce = true;
 		break;
 	    default:
 		printUsage(argv[0]);
@@ -413,7 +419,7 @@ int main(int argc, char* argv[])
 	    size_t m = ndof;
 	    //size_t n = contactNodes[i].size() * 5 + ndof - 6;
 	    size_t n_contacts = contactNodes[i].size() * 5;
-	    size_t n = contactNodes[i].size() * 5 + ndof;
+	    size_t n = enableRootForce ? contactNodes[i].size() * 5 + ndof : contactNodes[i].size() * 5 + ndof - 6;
 	    double h = stepLength * frameTime;
 	    //double h = 1;
 	    MatrixXd H(m, n);
@@ -458,14 +464,27 @@ int main(int argc, char* argv[])
 		H.leftCols(contactNodes[i].size() * 5) = hMinv * JtB;
 	    }
 	    //H.rightCols(ndof - 6) = hMinv.rightCols(ndof - 6);
-	    H.rightCols(ndof) = hMinv.rightCols(ndof);
+	    if (enableRootForce)
+		H.rightCols(ndof) = hMinv.rightCols(ndof);
+	    else
+		H.rightCols(ndof - 6) = hMinv.rightCols(ndof - 6);
 	    VectorXd hMinvC = hMinv * C;
 	    VectorXd d = vel - vel_hat - hMinvC;
 
 	    MSKtask_t task = NULL;
 #ifdef CONIC_OPTIMIZATION
-	    size_t num_var = n + m + (n_contacts + 6) + 1; // x = (lambda, xi_1 xi_2, t)
-	    size_t num_con = 4 * contactNodes[i].size() + m + (n_contacts + 6);
+	    size_t num_var;
+	    size_t num_con;
+	    if (enableRootForce)
+	    {
+		num_var = n + m + (n_contacts + 6) + 1; // x = (lambda, xi_1 xi_2, t)
+		num_con = 4 * contactNodes[i].size() + m + (n_contacts + 6);
+	    }
+	    else
+	    {
+		num_var = n + m + n + 1; // x = (lambda, xi_1 xi_2, t)
+		num_con = 4 * contactNodes[i].size() + m + n;
+	    }
 	    mosekOK(MSK_maketask(env, num_con, num_var, &task));
 	    mosekOK(MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr));
 	    mosekOK(MSK_appendcons(task, num_con));
@@ -516,28 +535,55 @@ int main(int argc, char* argv[])
 		aval.push_back(1.0);
 		mosekOK(MSK_putconbound(task, 4 * contactNodes[i].size() + j, MSK_BK_FX, d[j], d[j]));
 	    }
-	    for (size_t j = 0; j < n_contacts + 6; ++j)
+	    if (enableRootForce)
 	    {
-		asubi.push_back(4 * contactNodes[i].size() + m + j);
-		asubj.push_back(j);
-		if (j < n_contacts)
+		for (size_t j = 0; j < n_contacts + 6; ++j)
+		{
+		    asubi.push_back(4 * contactNodes[i].size() + m + j);
+		    asubj.push_back(j);
+		    if (j < n_contacts)
+			aval.push_back(sqrt(reg / n_contacts));
+		    else if (j < n_contacts + 3)
+			aval.push_back(sqrt(rootRotWeight));
+		    else
+			aval.push_back(sqrt(rootTransWeight));
+		    asubi.push_back(4 * contactNodes[i].size() + m + j);
+		    asubj.push_back(n + m + j);
+		    aval.push_back(-1.0);
+		    mosekOK(MSK_putconbound(task, 4 * contactNodes[i].size() + m + j, MSK_BK_FX, 0.0, 0.0));
+		}
+	    }
+	    else
+	    {
+		for (size_t j = 0; j < n_contacts; ++j)
+		{
+		    asubi.push_back(4 * contactNodes[i].size() + m + j);
+		    asubj.push_back(j);
 		    aval.push_back(sqrt(reg / n_contacts));
-		else if (j < n_contacts + 3)
-		    aval.push_back(sqrt(rootRotWeight));
-		else
-		    aval.push_back(sqrt(rootTransWeight));
-		asubi.push_back(4 * contactNodes[i].size() + m + j);
-		asubj.push_back(n + m + j);
-		aval.push_back(-1.0);
-		mosekOK(MSK_putconbound(task, 4 * contactNodes[i].size() + m + j, MSK_BK_FX, 0.0, 0.0));
+		    asubi.push_back(4 * contactNodes[i].size() + m + j);
+		    asubj.push_back(n + m + j);
+		    aval.push_back(-1.0);
+		    mosekOK(MSK_putconbound(task, 4 * contactNodes[i].size() + m + j, MSK_BK_FX, 0.0, 0.0));
+		}
 	    }
 	    mosekOK(MSK_putaijlist(task, aval.size(), asubi.data(), asubj.data(), aval.data()));
 
 	    // conic constraints
-	    vector<MSKint32t> csub(m + (n_contacts + 6) + 1);
-	    csub[0] = n + m + (n_contacts + 6); // t
-	    for (size_t i = 0; i < m + (n_contacts + 6); ++i)
-		csub[i + 1] = n + i;
+	    vector<MSKint32t> csub;
+	    if (enableRootForce)
+	    {
+		csub = vector<MSKint32t>(m + (n_contacts + 6) + 1);
+		csub[0] = n + m + (n_contacts + 6); // t
+		for (size_t i = 0; i < m + (n_contacts + 6); ++i)
+		    csub[i + 1] = n + i;
+	    }
+	    else
+	    {
+		csub = vector<MSKint32t>(m + n + 1);
+		csub[0] = n + m + n; // t
+		for (size_t i = 0; i < m + n; ++i)
+		    csub[i + 1] = n + i;
+	    }
 	    mosekOK(MSK_appendcone(task, MSK_CT_QUAD, 0.0, csub.size(), csub.data()));
 #else	// CONIC_OPTIMIZATION
 	    MatrixXd A = H.transpose() * W * H;
@@ -624,8 +670,10 @@ int main(int argc, char* argv[])
 	    //cout << "xi " << xi.transpose() << endl;
 	    //cout << "t " << x[n + m] << endl;;
 	    VectorXd Q = VectorXd::Zero(ndof);
-	    //Q.tail(ndof - 6) = lambda.tail(ndof - 6);
-	    Q = lambda.tail(ndof);
+	    if (enableRootForce)
+		Q = lambda.tail(ndof);
+	    else
+		Q.tail(ndof - 6) = lambda.tail(ndof - 6);
 	    fout << Q.transpose() << endl;
 	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
 	    {

@@ -31,6 +31,7 @@ GetOptions(
     "R|root_rot_weight=f" => \&add_inverse_opts,
     "T|root_trans_weight=f" => \&add_inverse_opts,
     "S|use_sim_state" => sub { push @inverse_opts, "-$_[0]" },
+    "U|enable_root_force" => sub { push @inverse_opts, "-$_[0]" },
     "t|threshold=f" => \&add_contact_opts,
     "g|ground=f"    => \&add_contact_opts,
 );
