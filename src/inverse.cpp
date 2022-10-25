@@ -413,7 +413,7 @@ int main(int argc, char* argv[])
 
 #ifdef FULL_SOLVE
 	std::chrono::steady_clock::time_point time_p = std::chrono::steady_clock::now();
-	if (numFrame == 1)
+	if (numFrame == 0)
 	//if (false)
 	{
 	    size_t m = ndof;
@@ -742,7 +742,7 @@ int main(int argc, char* argv[])
 			const BodyNode *bn = skeleton->getBodyNode(contactNodes[i + j][k]);
 			const Vector3d &point = contactPoints[i + j][k];
 			Isometry3d transform_kin = kin_skeleton->getBodyNode(contactNodes[i + j][k])->getWorldTransform();
-			Isometry3d transform_sim = skeleton->getBodyNode(contactNodes[i + j][j])->getWorldTransform();
+			Isometry3d transform_sim = skeleton->getBodyNode(contactNodes[i + j][k])->getWorldTransform();
 			transformedContactPoints[i].push_back(transform_sim * transform_kin.inverse() * point);
 			MatrixXd Jt = skeleton->getWorldJacobian(bn).transpose();
 			MatrixXd B1(6, 3);
@@ -934,8 +934,8 @@ int main(int argc, char* argv[])
 	    MSK_deletetask(&task);
 
 	    VectorXd lambda(contactNodes[i].size() * 5 + ndof - 6);
-	    for (size_t i = 0; i < contactNodes[i].size() * 5 + ndof - 6; ++i)
-		lambda[i] = x[i];
+	    for (size_t j = 0; j < contactNodes[i].size() * 5 + ndof - 6; ++j)
+		lambda[j] = x[j];
 	    VectorXd Q = VectorXd::Zero(ndof);
 	    Q.tail(ndof - 6) = lambda.tail(ndof - 6);
 	    fout << Q.transpose() << endl;
