@@ -21,6 +21,7 @@
 #define OPTIMIZOR   MOSEK
 #define FULL_SOLVE
 #define CONIC_OPTIMIZATION
+//#define OUTPUT_MAT
 
 #if OPTIMIZOR == ALGLIB
 #include "ext/optimization.h"
@@ -95,6 +96,8 @@ int main(int argc, char* argv[])
     double rootRotWeight = 0;
     double rootTransWeight = 0;
     bool enableRootForce = false;
+    string initStateFile = "";
+    string weightFile = "";
 
     while (1)
     {
@@ -108,6 +111,8 @@ int main(int argc, char* argv[])
 	    { "step_length", required_argument, NULL, 's' },
 	    { "regularization", required_argument, NULL, 'r' },
 	    { "num_frame", required_argument, NULL, 'n' },
+	    { "init_state_file", required_argument, NULL, 'i' },
+	    { "weight_file", required_argument, NULL, 'w' },
 	    { "outdir", required_argument, NULL, 'o' },
 	    { "start_frame", required_argument, NULL, 'A' },
 	    { "end_frame", required_argument, NULL, 'E' },
@@ -120,7 +125,7 @@ int main(int argc, char* argv[])
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:f:c:u:s:r:n:o:A:E:F:R:T:SU", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:u:s:r:n:i:w:o:A:E:F:R:T:SU", long_options, &option_index);
 	if (c == -1)
 	    break;
 
@@ -146,6 +151,12 @@ int main(int argc, char* argv[])
 		break;
 	    case 'n':
 		numFrame = stoi(optarg);
+		break;
+	    case 'i':
+		initStateFile = optarg;
+		break;
+	    case 'w':
+		weightFile = optarg;
 		break;
 	    case 'o':
 		outdir = optarg;
@@ -345,18 +356,33 @@ int main(int argc, char* argv[])
     MatrixXd W = MatrixXd::Identity(ndof, ndof);
     if (useSimState)
     {
-	for (int i = 0; i < 3; ++i)
+	//for (int i = 0; i < 3; ++i)
+	//{
+	//    W(i, i) = rootRotWeight;
+	//    W(3 + i, 3 + i) = rootTransWeight;
+	//}
+	if (weightFile != "")
 	{
-	    W(i, i) = rootRotWeight;
-	    W(3 + i, 3 + i) = rootTransWeight;
+	    VectorXd d = readMatrixXFrom(weightFile);
+	    W.diagonal() = d;
 	}
     }
+    Vector<bool> adjusted(f_end, false);
+    vector<VectorXd> ad_positions; // adjusted positions;
+    vector<VectorXd> ad_velocities; // adjusted velocities;
 #endif
 
 #if OPTIMIZOR == MOSEK
     MSKenv_t env = NULL;
     mosekOK(MSK_makeenv(&env, NULL));
 #endif
+
+    if (initStateFile != "")
+    {
+	vector<VectorXd> list = readVectorXdListFrom(initStateFile);
+	pos = list[0];
+	vel = list[1];
+    }
     
     //for (size_t i = 0; i < accelerations.size(); ++i)
     for (size_t i = f_start; i < f_end; i += stepLength)
@@ -413,9 +439,9 @@ int main(int argc, char* argv[])
 
 #ifdef FULL_SOLVE
 	std::chrono::steady_clock::time_point time_p = std::chrono::steady_clock::now();
-	if (numFrame == 0)
+	if (numFrame == 1)
 	//if (false)
-	{
+	{   // single-frame
 	    size_t m = ndof;
 	    //size_t n = contactNodes[i].size() * 5 + ndof - 6;
 	    size_t n_contacts = contactNodes[i].size() * 5;
@@ -470,20 +496,42 @@ int main(int argc, char* argv[])
 		H.rightCols(ndof - 6) = hMinv.rightCols(ndof - 6);
 	    VectorXd hMinvC = hMinv * C;
 	    VectorXd d = vel - vel_hat - hMinvC;
+	    H = W * H;
+	    d = W * d;
 
 	    MSKtask_t task = NULL;
 #ifdef CONIC_OPTIMIZATION
+
+#ifdef OUTPUT_MAT
+	    char suffix[20];
+	    sprintf(suffix, "_%04ld.txt", i);
+	    ofstream H_out(outdir + "/H" + suffix);
+	    H_out << H << endl;
+	    H_out.close();
+	    ofstream hMinvC_out(outdir + "/hMinvC" + suffix);
+	    hMinvC_out << hMinvC << endl;
+	    hMinvC_out.close();
+	    ofstream vel_out(outdir + "/vel" + suffix);
+	    vel_out << vel << endl;
+	    vel_out.close();
+	    ofstream vel_hat_out(outdir + "/vel_hat" + suffix);
+	    vel_hat_out << vel_hat << endl;
+	    vel_hat_out.close();
+	    ofstream d_out(outdir + "/d" + suffix);
+	    d_out << d << endl;
+	    d_out.close();
+#endif
 	    size_t num_var;
 	    size_t num_con;
 	    if (enableRootForce)
 	    {
-		num_var = n + m + (n_contacts + 6) + 1; // x = (lambda, xi_1 xi_2, t)
+		num_var = n + m + (n_contacts + 6) + 1; // x = (lambda, xi_1, xi_2, t)
 		num_con = 4 * contactNodes[i].size() + m + (n_contacts + 6);
 	    }
 	    else
 	    {
-		num_var = n + m + n + 1; // x = (lambda, xi_1 xi_2, t)
-		num_con = 4 * contactNodes[i].size() + m + n;
+		num_var = n + m + n_contacts + 1; // x = (lambda, xi_1, xi_2, t)
+		num_con = 4 * contactNodes[i].size() + m + n_contacts;
 	    }
 	    mosekOK(MSK_maketask(env, num_con, num_var, &task));
 	    mosekOK(MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr));
@@ -498,6 +546,7 @@ int main(int argc, char* argv[])
 	    // box constraints
 	    for (size_t j = 0; j < contactNodes[i].size() * 5; ++j)
 		mosekOK(MSK_putvarbound(task, j, MSK_BK_LO, 0.0, +MSK_INFINITY));
+		//mosekOK(MSK_putvarbound(task, j, MSK_BK_RA, 0.0, 10));
 	    for (size_t j = contactNodes[i].size() * 5; j < num_var; ++j)
 		mosekOK(MSK_putvarbound(task, j, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY));
 
@@ -579,9 +628,9 @@ int main(int argc, char* argv[])
 	    }
 	    else
 	    {
-		csub = vector<MSKint32t>(m + n + 1);
-		csub[0] = n + m + n; // t
-		for (size_t i = 0; i < m + n; ++i)
+		csub = vector<MSKint32t>(m + n_contacts + 1);
+		csub[0] = n + m + n_contacts; // t
+		for (size_t i = 0; i < m + n_contacts; ++i)
 		    csub[i + 1] = n + i;
 	    }
 	    mosekOK(MSK_appendcone(task, MSK_CT_QUAD, 0.0, csub.size(), csub.data()));
@@ -669,6 +718,23 @@ int main(int argc, char* argv[])
 	    //    xi[i] = x[n + i];
 	    //cout << "xi " << xi.transpose() << endl;
 	    //cout << "t " << x[n + m] << endl;;
+#ifdef OUTPUT_MAT
+	    ofstream lambda_out(outdir + "/lambda" + suffix);
+	    lambda_out << lambda << endl;
+	    lambda_out.close();
+	    ofstream xi_1_out(outdir + "/xi_1" + suffix);
+	    VectorXd xi_1(m);
+	    for (size_t j = 0; j < xi_1.size(); ++j)
+		xi_1[j] = x[n + j];
+	    xi_1_out << xi_1 << endl;
+	    xi_1_out.close();
+	    ofstream xi_2_out(outdir + "/xi_2" + suffix);
+	    VectorXd xi_2(n_contacts);
+	    for (size_t j = 0; j < xi_2.size(); ++j)
+		xi_2[j] = x[n + m + j];
+	    xi_2_out << xi_2 << endl;
+	    xi_2_out.close();
+#endif
 	    VectorXd Q = VectorXd::Zero(ndof);
 	    if (enableRootForce)
 		Q = lambda.tail(ndof);
@@ -706,7 +772,7 @@ int main(int argc, char* argv[])
 	    //cout << "d\n" << d << endl;
 	}
 	else
-	{
+	{   // multi-frame
 	    vector<MatrixXd> aH;
 	    vector<VectorXd> ahMinvC;
 	    vector<MatrixXd> B2list;
@@ -785,8 +851,30 @@ int main(int argc, char* argv[])
 		assert(hMinvC.rows() == ndof);
 		ahMinvC.push_back(hMinvC);
 	    }
+
+#ifdef OUTPUT_MAT
+	    char suffix[20];
+	    sprintf(suffix, "_%04ld.txt", i);
+	    ofstream H_out(outdir + "/H" + suffix);
+	    H_out.precision(16);
+	    H_out << aH[0] << endl;
+	    H_out.close();
+	    ofstream hMinvC_out(outdir + "/hMinvC" + suffix);
+	    hMinvC_out.precision(16);
+	    hMinvC_out << ahMinvC[0] << endl;
+	    hMinvC_out.close();
+	    ofstream vel_out(outdir + "/vel" + suffix);
+	    vel_out.precision(16);
+	    vel_out << vel << endl;
+	    vel_out.close();
+	    ofstream vel_hat_out(outdir + "/vel_hat" + suffix);
+	    vel_hat_out.precision(16);
+	    vel_hat_out << vel_hat << endl;
+	    vel_hat_out.close();
+#endif
 	    // (lambda, xi_1, xi_2, q, t)
 	    size_t num_var = num_lambda + ndof * numFrame + n_contacts + ndof * numFrame + 1;
+	    cout << num_var << endl;
 	    size_t num_con = 4 * num_contacts + ndof * numFrame + n_contacts + ndof * numFrame;
 	    MSKtask_t task = NULL;
 	    mosekOK(MSK_maketask(env, num_con, num_var, &task));
@@ -805,6 +893,7 @@ int main(int argc, char* argv[])
 	    {
 		for (size_t k = 0; k < contactNodes[i + j].size() * 5; ++k)
 		    mosekOK(MSK_putvarbound(task, ii++, MSK_BK_LO, 0.0, +MSK_INFINITY));
+		    //mosekOK(MSK_putvarbound(task, ii++, MSK_BK_RA, 0.0, 10)); // NOTICE
 		for (size_t k = 0; k < ndof - 6; ++k)
 		    mosekOK(MSK_putvarbound(task, ii++, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY));
 	    }
@@ -849,6 +938,7 @@ int main(int argc, char* argv[])
 		    aval.push_back(1.0);
 		    if (j == 0)
 			mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, vel_hat[k], vel_hat[k]));
+			//mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, velocities[i + j + 1][k], velocities[i + j + 1][k])); // NOTICE
 		    else
 			mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, velocities[i + j + 1][k], velocities[i + j + 1][k]));
 		    ++ii;
@@ -865,7 +955,7 @@ int main(int argc, char* argv[])
 		    asubj.push_back(jj);
 		    aval.push_back(sqrt(reg / n_contacts));
 		    asubi.push_back(base + ii);
-		    asubj.push_back(num_lambda + ndof * numFrame + jj);
+		    asubj.push_back(num_lambda + ndof * numFrame + ii);
 		    aval.push_back(-1.0);
 		    mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, 0.0, 0.0));
 		    ++ii;
@@ -874,14 +964,14 @@ int main(int argc, char* argv[])
 	    assert(ii == n_contacts);
 	    base += ii;
 	    size_t base_k = 0;
-	    size_t q_base = num_lambda + ndof * numFrame + n_contacts;
+	    const size_t q_base = num_lambda + ndof * numFrame + n_contacts;
 	    for (size_t j = 0; j < numFrame; ++j)
 	    {
-		MatrixXd &H = aH[j];
-		VectorXd &hMinvC = ahMinvC[j];
+		const MatrixXd &H = aH[j];
+		const VectorXd &hMinvC = ahMinvC[j];
 		for (size_t jj = 0; jj < H.rows(); ++jj)
 		    for (size_t kk = 0; kk < H.cols(); ++kk)
-			if (abs(H(jj, kk)) > 1e-8)
+			//if (abs(H(jj, kk)) > 1e-8)
 			{
 			    asubi.push_back(base + jj);
 			    asubj.push_back(base_k + kk);
@@ -950,8 +1040,35 @@ int main(int argc, char* argv[])
 	    MSK_deletetask(&task);
 
 	    VectorXd lambda(contactNodes[i].size() * 5 + ndof - 6);
-	    for (size_t j = 0; j < contactNodes[i].size() * 5 + ndof - 6; ++j)
+	    for (size_t j = 0; j < lambda.size(); ++j)
 		lambda[j] = x[j];
+#ifdef OUTPUT_MAT
+	    ofstream lambda_out(outdir + "/lambda" + suffix);
+	    lambda_out.precision(16);
+	    lambda_out << lambda << endl;
+	    lambda_out.close();
+	    ofstream xi_1_out(outdir + "/xi_1" + suffix);
+	    xi_1_out.precision(16);
+	    VectorXd xi_1(ndof * numFrame);
+	    for (size_t j = 0; j < xi_1.size(); ++j)
+		xi_1[j] = x[num_lambda + j];
+	    xi_1_out << xi_1 << endl;
+	    xi_1_out.close();
+	    ofstream xi_2_out(outdir + "/xi_2" + suffix);
+	    xi_2_out.precision(16);
+	    VectorXd xi_2(n_contacts);
+	    for (size_t j = 0; j < xi_2.size(); ++j)
+		xi_2[j] = x[num_lambda + ndof * numFrame + j];
+	    xi_2_out << xi_2 << endl;
+	    xi_2_out.close();
+	    ofstream q_out(outdir + "/q" + suffix);
+	    q_out.precision(16);
+	    VectorXd q(ndof * numFrame);
+	    for (size_t j = 0; j < q.size(); ++j)
+		q[j] = x[num_lambda + ndof * numFrame + n_contacts + j];
+	    q_out << q << endl;
+	    q_out.close();
+#endif
 	    VectorXd Q = VectorXd::Zero(ndof);
 	    Q.tail(ndof - 6) = lambda.tail(ndof - 6);
 	    fout << Q.transpose() << endl;
