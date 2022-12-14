@@ -43,3 +43,6 @@ target_link_libraries(CharacterViewer.out stdc++ dart dart-gui-osg osg osgViewer
 
 add_executable(ComputeCOM.out src/ComputeCOM.cpp src/SimCharacter.cpp src/PyUtil.cpp src/IOUtil.cpp)
 target_link_libraries(ComputeCOM.out stdc++ dart assimp boost_system ${Python3_LINK_OPTIONS})
+
+add_executable(kinematics.out src/kinematics.cpp src/SimCharacter.cpp src/PyUtil.cpp src/IOUtil.cpp)
+target_link_libraries(kinematics.out stdc++ dart assimp boost_system ${Python3_LINK_OPTIONS})
