@@ -326,6 +326,8 @@ int main(int argc, char* argv[])
     ofstream aout(outdir + "/accelerations.txt");
     ofstream cfout(outdir + "/contact_forces.txt");
     ofstream eout(outdir + "/errors.txt");
+    ofstream comout(outdir + "/coms.txt");
+    ofstream kincomout(outdir + "/kin_coms.txt");
 
     /* Jacobian test
     SimCharacter acrobot("Acrobot.json");
@@ -367,9 +369,9 @@ int main(int argc, char* argv[])
 	    W.diagonal() = d;
 	}
     }
-    Vector<bool> adjusted(f_end, false);
-    vector<VectorXd> ad_positions; // adjusted positions;
-    vector<VectorXd> ad_velocities; // adjusted velocities;
+    vector<bool> adjusted(f_end + numFrame, false);
+    vector<VectorXd> ad_positions(f_end + numFrame); // adjusted positions;
+    vector<VectorXd> ad_velocities(f_end + numFrame); // adjusted velocities;
 #endif
 
 #if OPTIMIZOR == MOSEK
@@ -452,6 +454,10 @@ int main(int argc, char* argv[])
 	    MatrixXd hMinv = h * M.inverse();
 	    vector<MatrixXd> B2list;
 	    MatrixXd JtB(m, contactNodes[i].size() * 5);
+	    comout << skeleton->getCOM().transpose() << " " << skeleton->getCOMLinearVelocity().transpose() << endl;
+	    kin_skeleton->setPositions(positions[i]);
+	    kin_skeleton->setVelocities(velocities[i]);
+	    kincomout << kin_skeleton->getCOM().transpose() << " " << kin_skeleton->getCOMLinearVelocity().transpose() << endl;
 	    if (contactNodes[i].size() > 0)
 	    {
 		//MatrixXd JtB(m, contactNodes[i].size() * 5);
@@ -771,6 +777,303 @@ int main(int argc, char* argv[])
 	    //cout << "b\n" << b << endl;
 	    //cout << "d\n" << d << endl;
 	}
+	else if (numFrame == 2)
+	{
+	    numFrame = 2;
+	    vector<MatrixXd> aH;
+	    vector<VectorXd> ahMinvC;
+	    vector<MatrixXd> B2list;
+	    vector<size_t> contactIdxBegin;
+	    vector<size_t> contactIdxEnd;
+	    size_t n_contacts = 0;
+	    MatrixXd JtB(ndof, contactNodes[i].size() * 5);
+	    size_t num_lambda = 0, num_contacts = 0;
+	    double h = stepLength;
+	    //comout << skeleton->getCOM().transpose() << " " << skeleton->getCOMLinearVelocity().transpose() << endl;
+	    //kin_skeleton->setPositions(positions[i]);
+	    //kin_skeleton->setVelocities(velocities[i]);
+	    //kincomout << kin_skeleton->getCOM().transpose() << " " << kin_skeleton->getCOMLinearVelocity().transpose() << endl;
+	    for (size_t j = 0; j < numFrame; ++j)
+	    {
+		size_t m = ndof;
+		size_t n = contactNodes[i + j].size() * 5 + ndof - 6;
+		num_lambda += n;
+		contactIdxBegin.push_back(num_lambda - n);
+		contactIdxEnd.push_back(num_lambda - n + contactNodes[i + j].size() * 5);
+		n_contacts += contactNodes[i + j].size() * 5;
+		if (j == 0)
+		{
+		    skeleton->setPositions(pos);
+		    skeleton->setVelocities(vel);
+		}
+		else
+		{
+		    if (adjusted[i + j])
+		    {
+			skeleton->setPositions(ad_positions[i + j]);
+			skeleton->setVelocities(ad_velocities[i + j]);
+		    }
+		    else
+		    {
+			skeleton->setPositions(positions[i + j]);
+			skeleton->setVelocities(velocities[i + j]);
+		    }
+		}
+		kin_skeleton->setPositions(positions[i + j]);
+		kin_skeleton->setVelocities(velocities[i + j]);
+		M = skeleton->getMassMatrix();
+		C = skeleton->getCoriolisAndGravityForces();
+		MatrixXd H(m, n);
+		MatrixXd hMinv = h * M.inverse();
+		MatrixXd _JtB(m, contactNodes[i + j].size() * 5);
+		if (contactNodes[i + j].size() > 0)
+		{
+		    for (size_t k = 0; k < contactNodes[i + j].size(); ++k)
+		    {
+			const BodyNode *bn = skeleton->getBodyNode(contactNodes[i + j][k]);
+			const Vector3d &point = contactPoints[i + j][k];
+			Isometry3d transform_kin = kin_skeleton->getBodyNode(contactNodes[i + j][k])->getWorldTransform();
+			Isometry3d transform_sim = skeleton->getBodyNode(contactNodes[i + j][k])->getWorldTransform();
+			if (j == 0)
+			    transformedContactPoints[i].push_back(transform_sim * transform_kin.inverse() * point);
+			MatrixXd Jt = skeleton->getWorldJacobian(bn).transpose();
+			MatrixXd B1(6, 3);
+			B1.topRows(3) = dart::math::makeSkewSymmetric(point - transform_kin.translation());
+			B1.bottomRows(3) = Matrix3d::Identity();
+			//Vector3d normal = Vector3d::UnitY();	// y-axis points up
+			//Vector3d tangent1 = Vector3d::UnitX();
+			//Vector3d tangent2 = Vector3d::UnitZ();
+			Vector3d normal = Vector3d::UnitZ();	// z-axis points up
+			Vector3d tangent1 = Vector3d::UnitX();
+			Vector3d tangent2 = Vector3d::UnitY();
+			MatrixXd B2(3, 5);
+			B2.col(0) = normal;
+			B2.col(1) = tangent1;
+			B2.col(2) = tangent2;
+			B2.col(3) = -tangent1;
+			B2.col(4) = -tangent2;
+			MatrixXd mat = Jt * B1 * B2;
+			_JtB.middleCols(k * 5, 5) = mat;
+			if (j == 0)
+			{
+			    B2list.push_back(B2);
+			    JtB = _JtB;
+			}
+			
+		    }
+		    H.leftCols(contactNodes[i + j].size() * 5) = hMinv * _JtB;
+		    num_contacts += contactNodes[i + j].size();
+		}
+		H.rightCols(ndof - 6) = hMinv.rightCols(ndof - 6);
+		aH.push_back(H);
+		VectorXd hMinvC = hMinv * C;
+		assert(hMinvC.rows() == ndof);
+		ahMinvC.push_back(hMinvC);
+	    }
+
+	    size_t num_var = num_lambda + ndof * numFrame + n_contacts + 1;
+	    size_t num_con = 4 * num_contacts + n_contacts + ndof * numFrame;
+
+	    MSKtask_t task = NULL;
+	    mosekOK(MSK_maketask(env, num_con, num_var, &task));
+	    mosekOK(MSK_linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr));
+	    mosekOK(MSK_appendcons(task, num_con));
+	    mosekOK(MSK_appendvars(task, num_var));
+
+	    // set up linear term in the objective
+	    for (size_t j = 0; j < num_var - 1; ++j)
+		mosekOK(MSK_putcj(task, j, 0.0));
+	    mosekOK(MSK_putcj(task, num_var - 1, 1.0));
+
+	    // box constraints
+	    size_t ii = 0;
+	    for (size_t j = 0; j < numFrame; ++j)
+	    {
+		for (size_t k = 0; k < contactNodes[i + j].size() * 5; ++k)
+		    mosekOK(MSK_putvarbound(task, ii++, MSK_BK_LO, 0.0, +MSK_INFINITY));
+		    //mosekOK(MSK_putvarbound(task, ii++, MSK_BK_RA, 0.0, 10)); // NOTICE
+		for (size_t k = 0; k < ndof - 6; ++k)
+		    mosekOK(MSK_putvarbound(task, ii++, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY));
+	    }
+	    for (size_t j = ii; j < num_var; ++j)
+		mosekOK(MSK_putvarbound(task, j, MSK_BK_FR, -MSK_INFINITY, +MSK_INFINITY));
+
+	    // linear constraints
+	    vector<MSKint32t> asubi, asubj;
+	    vector<double> aval;
+	    ii = 0;
+	    size_t kk = 0;
+	    for (size_t j = 0; j < numFrame; ++j)
+	    {
+		for (size_t jj = 0; jj < contactNodes[i + j].size(); ++jj)
+		{
+		    for (size_t k = 0; k < 4; ++k)
+		    {
+			asubi.push_back(kk);
+			asubj.push_back(ii + 5 * jj + 0);
+			aval.push_back(mu);
+			asubi.push_back(kk);
+			asubj.push_back(ii + 5 * jj + k + 1);
+			aval.push_back(-1.0);
+			mosekOK(MSK_putconbound(task, kk, MSK_BK_LO, 0.0, +MSK_INFINITY));
+			++kk;
+		    }
+		}
+		ii += 5 * contactNodes[i + j].size() + ndof - 6;
+	    }
+	    assert(kk == 4 * num_contacts);
+
+	    size_t base = kk;
+	    ii = 0;
+	    for (size_t j = 0; j < numFrame; ++j)
+	    {
+		for (size_t jj = contactIdxBegin[j]; jj < contactIdxEnd[j]; ++jj)
+		{
+		    asubi.push_back(base + ii);
+		    asubj.push_back(jj);
+		    aval.push_back(sqrt(reg / n_contacts));
+		    asubi.push_back(base + ii);
+		    asubj.push_back(num_lambda + ndof * numFrame + ii);
+		    aval.push_back(-1.0);
+		    mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, 0.0, 0.0));
+		    ++ii;
+		}
+	    }
+	    assert(ii == n_contacts);
+	    base += ii;
+
+	    for (size_t jj = 0; jj < aH[0].rows(); ++jj)
+		for (size_t kk = 0; kk < aH[0].cols(); ++kk)
+		    //if (abs(H(jj, kk)) > 1e-8)
+		{
+		    asubi.push_back(base + jj);
+		    asubj.push_back(kk);
+		    aval.push_back(aH[0](jj, kk));
+		}
+	    for (size_t k = 0; k < ndof; ++k)
+	    {
+		asubi.push_back(base + k);
+		asubj.push_back(num_lambda + k);
+		aval.push_back(-1.0);
+	    }
+	    for (size_t k = 0; k < ndof; ++k)
+		mosekOK(MSK_putconbound(task, base + k, MSK_BK_FX, vel_hat[k] - vel[k] + ahMinvC[0][k], vel_hat[k] - vel[k] + ahMinvC[0][k]));
+	    base += ndof;
+
+	    for (size_t jj = 0; jj < aH[0].rows(); ++jj)
+		for (size_t kk = 0; kk < aH[0].cols(); ++kk)
+		    //if (abs(H(jj, kk)) > 1e-8)
+		{
+		    asubi.push_back(base + jj);
+		    asubj.push_back(kk);
+		    aval.push_back(aH[0](jj, kk));
+		}
+	    for (size_t jj = 0; jj < aH[1].rows(); ++jj)
+		for (size_t kk = 0; kk < aH[1].cols(); ++kk)
+		    //if (abs(H(jj, kk)) > 1e-8)
+		{
+		    asubi.push_back(base + jj);
+		    asubj.push_back(aH[0].cols() + kk);
+		    aval.push_back(aH[1](jj, kk));
+		}
+	    for (size_t k = 0; k < ndof; ++k)
+	    {
+		asubi.push_back(base + k);
+		asubj.push_back(num_lambda + ndof + k);
+		aval.push_back(-1.0);
+	    }
+	    if (adjusted[i + 1])
+	    {
+		for (size_t k = 0; k < ndof; ++k)
+		    mosekOK(MSK_putconbound(task, base + k, MSK_BK_FX, ad_velocities[i + 1][k] - vel[k] + ahMinvC[0][k] + ahMinvC[1][k], ad_velocities[i + 1][k] - vel[k] + ahMinvC[0][k] + ahMinvC[1][k]));
+	    }
+	    else
+	    {
+		for (size_t k = 0; k < ndof; ++k)
+		    mosekOK(MSK_putconbound(task, base + k, MSK_BK_FX, velocities[i + 1][k] - vel[k] + ahMinvC[0][k] + ahMinvC[1][k], velocities[i + 1][k] - vel[k] + ahMinvC[0][k] + ahMinvC[1][k]));
+	    }
+	    base += ndof;
+
+	    mosekOK(MSK_putaijlist(task, aval.size(), asubi.data(), asubj.data(), aval.data()));
+
+	    // conic constraints
+	    vector<MSKint32t> csub(ndof * numFrame + n_contacts + 1);
+	    csub[0] = num_lambda + ndof * numFrame + n_contacts; // t
+	    for (size_t i = 0; i < ndof * numFrame + n_contacts; ++i)
+		csub[i + 1] = num_lambda + i;
+	    mosekOK(MSK_appendcone(task, MSK_CT_QUAD, 0.0, csub.size(), csub.data()));
+
+	    cout << "matrix construction (Mosek): " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_p).count() << " ms" << endl;
+	    MSKrescodee trmcode;
+	    mosekOK(MSK_optimizetrm(task, &trmcode));
+	    MSK_solutionsummary(task, MSK_STREAM_MSG);
+	    MSKsolstae solsta;
+	    MSK_getsolsta(task, MSK_SOL_ITR, &solsta);
+	    vector<double> x(num_var);
+	    switch (solsta)
+	    {
+		case MSK_SOL_STA_OPTIMAL:
+		    MSK_getxx(task, MSK_SOL_ITR, x.data());
+		    break;
+
+		case MSK_SOL_STA_DUAL_INFEAS_CER:
+		case MSK_SOL_STA_PRIM_INFEAS_CER:
+		    cout << "Primal or dual infeasibility certificate found." << endl;
+		    break;
+
+		case MSK_SOL_STA_UNKNOWN:
+		    cout << "The status of the solution could not be determined. Termination code: " << trmcode << endl;
+		    break;
+
+		default:
+		    cout << "Other solution status." << endl;
+		    break;
+	    }
+	    MSK_deletetask(&task);
+
+	    VectorXd lambda(contactNodes[i].size() * 5 + ndof - 6);
+	    for (size_t j = 0; j < lambda.size(); ++j)
+		lambda[j] = x[j];
+	    VectorXd Q = VectorXd::Zero(ndof);
+	    Q.tail(ndof - 6) = lambda.tail(ndof - 6);
+	    fout << Q.transpose() << endl;
+	    for (size_t j = 0; j < contactNodes[i].size(); ++j)
+	    {
+		VectorXd lamb = lambda.segment(j * 5, 5);
+		Vector3d f = B2list[j] * lamb;
+		cfout << transformedContactPoints[i][j].transpose() << " " << f.transpose() << " ";
+	    }
+	    cfout << endl;
+	    MatrixXd H = aH[0];
+	    VectorXd hMinvC = ahMinvC[0];
+	    vel_n = vel - hMinvC + H * lambda;
+
+	    VectorXd lambda1(contactNodes[i + 1].size() * 5 + ndof - 6);
+	    for (size_t j = 0; j < lambda1.size(); ++j)
+		lambda1[j] = x[lambda.size() + j];
+	    VectorXd vel_n1 = vel + aH[0] * lambda + aH[1] * lambda1 - ahMinvC[0] - ahMinvC[1];
+	    VectorXd q;
+	    skeleton->setVelocities(vel_n);
+	    skeleton->integratePositions(stepLength * frameTime);
+	    q = skeleton->getPositions();
+	    adjusted[i + 1] = true;
+	    ad_velocities[i + 1] = skeleton->getPositionDifferences(positions[i + 2], q) / (stepLength * frameTime);
+	    ad_positions[i + 1] = q;
+	    skeleton->setVelocities(vel_n1);
+	    skeleton->integratePositions(stepLength * frameTime);
+	    q = skeleton->getPositions();
+	    adjusted[i + 2] = true;
+	    ad_velocities[i + 2] = skeleton->getPositionDifferences(positions[i + 3], q) / (stepLength * frameTime);
+	    ad_positions[i + 2] = q;
+
+	    VectorXd err = vel_n - vel_hat;
+	    eout << err.norm() << endl;
+	    cout << "err1 " << err.norm() << endl;
+	    cout << "err3 " << (H * lambda + vel - hMinvC - vel_hat).norm() << endl;
+	    VectorXd acc = M.colPivHouseholderQr().solve(JtB * lambda.head(contactNodes[i].size() * 5) + Q - C);
+	    cout << "err4 " << (velocities[i] + acc * h - velocities[i + 1]).norm() << endl;
+	    cout << "err5 " << (velocities[i] + accelerations[i] * h - velocities[i + 1]).norm() << endl;
+	}
 	else
 	{   // multi-frame
 	    vector<MatrixXd> aH;
@@ -782,6 +1085,10 @@ int main(int argc, char* argv[])
 	    MatrixXd JtB(ndof, contactNodes[i].size() * 5);
 	    size_t num_lambda = 0, num_contacts = 0;
 	    double h = stepLength;
+	    comout << skeleton->getCOM().transpose() << " " << skeleton->getCOMLinearVelocity().transpose() << endl;
+	    kin_skeleton->setPositions(positions[i]);
+	    kin_skeleton->setVelocities(velocities[i]);
+	    kincomout << kin_skeleton->getCOM().transpose() << " " << kin_skeleton->getCOMLinearVelocity().transpose() << endl;
 	    for (size_t j = 0; j < numFrame; ++j)
 	    {
 		size_t m = ndof;
@@ -874,7 +1181,7 @@ int main(int argc, char* argv[])
 #endif
 	    // (lambda, xi_1, xi_2, q, t)
 	    size_t num_var = num_lambda + ndof * numFrame + n_contacts + ndof * numFrame + 1;
-	    cout << num_var << endl;
+	    //cout << num_var << endl;
 	    size_t num_con = 4 * num_contacts + ndof * numFrame + n_contacts + ndof * numFrame;
 	    MSKtask_t task = NULL;
 	    mosekOK(MSK_maketask(env, num_con, num_var, &task));
@@ -940,7 +1247,12 @@ int main(int argc, char* argv[])
 			mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, vel_hat[k], vel_hat[k]));
 			//mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, velocities[i + j + 1][k], velocities[i + j + 1][k])); // NOTICE
 		    else
-			mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, velocities[i + j + 1][k], velocities[i + j + 1][k]));
+		    {
+			//if (adjusted[i + j])
+			//    mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, ad_velocities[i + j][k], ad_velocities[i + j][k]));
+			//else
+			    mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, velocities[i + j][k], velocities[i + j][k]));
+		    }
 		    ++ii;
 		}
 	    }
@@ -1082,9 +1394,25 @@ int main(int argc, char* argv[])
 	    MatrixXd H = aH[0];
 	    VectorXd hMinvC = ahMinvC[0];
 	    vel_n = vel - hMinvC + H * lambda;
+	    VectorXd qdot(ndof);
 	    VectorXd qdot_1(ndof);
-	    for (size_t i = 0; i < ndof; ++i)
-		qdot_1[i] = x[num_lambda + ndof * numFrame + n_contacts + i];
+	    for (size_t j = 0; j < numFrame; ++j)
+	    {
+		for (size_t k = 0; k < ndof; ++k)
+		{
+		    qdot[k] = x[num_lambda + ndof * numFrame + n_contacts + j * ndof + k];
+		}
+		skeleton->setVelocities(qdot);
+		skeleton->integratePositions(stepLength * frameTime);
+		VectorXd q = skeleton->getPositions();
+		if (i + j + 2 < positions.size())
+		{
+		    ad_velocities[i + j + 1] = skeleton->getPositionDifferences(positions[i + j + 2], q) / (stepLength * frameTime);
+		    adjusted[i + j + 1] = true;
+		}
+		if (j == 0)
+		    qdot_1 = qdot;
+	    }
 	    VectorXd err = vel_n - vel_hat;
 	    eout << err.norm() << endl;
 	    cout << "err1 " << err.norm() << endl;
@@ -1353,6 +1681,7 @@ int main(int argc, char* argv[])
 	aout << accelerations[i].transpose() << endl;
 
 	vel = vel_n;
+	skeleton->setPositions(pos);
 	skeleton->setVelocities(vel);
 	skeleton->integratePositions(stepLength * frameTime);
 	pos = skeleton->getPositions();
@@ -1372,6 +1701,8 @@ int main(int argc, char* argv[])
     aout.close();
     cfout.close();
     eout.close();
+    comout.close();
+    kincomout.close();
 
     return 0;
 }
