@@ -9,3 +9,6 @@ data/body_models/
 .tags
 imgui.ini
 Makefile
+*.mp4
+*.sh
+*.png
