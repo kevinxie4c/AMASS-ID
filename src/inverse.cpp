@@ -52,7 +52,8 @@ void printUsage(char * prgname)
     cout << "\t-o, --outdir=string" << endl;
     cout << "\t-A, --start_frame=int" << endl;
     cout << "\t-E, --end_frame=int" << endl;
-    cout << "\t-C, --continuity=double" << endl;
+    cout << "\t-C, --continuity_frame=double" << endl;
+    cout << "\t-D, --continuity_window=double" << endl;
     cout << "\t-F, --filter_type=none|position|velocity" << endl;
     cout << "\t-R, --root_rot_weight" << endl;
     cout << "\t-T, --root_trans_weight" << endl;
@@ -100,7 +101,8 @@ int main(int argc, char* argv[])
     string initStateFile = "";
     string weightFile = "";
     string fixContactsFile = "";
-    double continuity = 0.0;
+    double continuityFrame = 0.0;
+    double continuityWindow = 0.0;
 
     while (1)
     {
@@ -120,7 +122,8 @@ int main(int argc, char* argv[])
 	    { "outdir", required_argument, NULL, 'o' },
 	    { "start_frame", required_argument, NULL, 'A' },
 	    { "end_frame", required_argument, NULL, 'E' },
-	    { "continuity", required_argument, NULL, 'C' },
+	    { "continuity_frame", required_argument, NULL, 'C' },
+	    { "continuity_window", required_argument, NULL, 'D' },
 	    { "filter_type", required_argument, NULL, 'F' },
 	    { "root_rot_weight", required_argument, NULL, 'R' },
 	    { "root_trans_weight", required_argument, NULL, 'T' },
@@ -130,7 +133,7 @@ int main(int argc, char* argv[])
 	};
 	int option_index = 0;
 
-	c = getopt_long(argc, argv, "j:f:c:u:s:r:n:i:w:x:o:A:E:C:F:R:T:SU", long_options, &option_index);
+	c = getopt_long(argc, argv, "j:f:c:u:s:r:n:i:w:x:o:A:E:C:D:F:R:T:SU", long_options, &option_index);
 	if (c == -1)
 	    break;
 
@@ -177,7 +180,10 @@ int main(int argc, char* argv[])
 		endFrameSet = true;
 		break;
 	    case 'C':
-		continuity = stod(optarg);
+		continuityFrame = stod(optarg);
+		break;
+	    case 'D':
+		continuityWindow = stod(optarg);
 		break;
 	    case 'F':
 		if (strcmp(optarg, "none") == 0)
@@ -950,19 +956,30 @@ int main(int argc, char* argv[])
 	    static VectorXd prevQ;
 	    //cout << num_var << endl;
 	    size_t num_con = 4 * num_contacts + ndof * numFrame + n_contacts + ndof * numFrame;
-	    if (continuity > 0)
+	    if (continuityFrame > 0)
 	    //if (false)
 	    {
 		// (lambda, xi_1, xi_2, q, t, xi_3)
 		if (i == f_start)
 		{
-		    num_var += (ndof - 6) * (numFrame - 1);
-		    num_con += (ndof - 6) * (numFrame - 1);
+		    if (continuityWindow > 0)
+		    {
+			num_var += (ndof - 6) * (numFrame - 1);
+			num_con += (ndof - 6) * (numFrame - 1);
+		    }
 		}
 		else
 		{
-		    num_var += (ndof - 6) * numFrame;
-		    num_con += (ndof - 6) * numFrame;
+		    if (continuityWindow > 0)
+		    {
+			num_var += (ndof - 6) * numFrame;
+			num_con += (ndof - 6) * numFrame;
+		    }
+		    else
+		    {
+			num_var += ndof - 6;
+			num_con += ndof - 6;
+		    }
 		}
 	    }
 	    MSKtask_t task = NULL;
@@ -972,7 +989,7 @@ int main(int argc, char* argv[])
 	    mosekOK(MSK_appendvars(task, num_var));
 
 	    // set up linear term in the objective
-	    if (continuity > 0)
+	    if (continuityFrame > 0)
 	    {
 		for (size_t j = 0; j < num_var; ++j)
 		    mosekOK(MSK_putcj(task, j, j == num_lambda + ndof * numFrame + n_contacts + ndof * numFrame ? 1.0 : 0.0));
@@ -1106,7 +1123,7 @@ int main(int argc, char* argv[])
 	    }
 	    // assert?
 
-	    if (continuity > 0)
+	    if (continuityFrame > 0)
 	    //if (false)
 	    {
 		ii = 0;
@@ -1117,29 +1134,32 @@ int main(int argc, char* argv[])
 		    {
 			asubi.push_back(base + ii);
 			asubj.push_back(contactIdxEnd[0] + j);
-			aval.push_back(continuity);
+			aval.push_back(continuityFrame);
 			asubi.push_back(base + ii);
 			asubj.push_back(base_j + ii);
 			aval.push_back(-1.0);
-			mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, continuity * prevQ[6 + j], continuity * prevQ[6 + j]));
+			mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, continuityFrame * prevQ[6 + j], continuityFrame * prevQ[6 + j]));
 			++ii;
 		    }
 		}
-		for (size_t k = 1; k < numFrame; ++k)
+		if (continuityWindow > 0)
 		{
-		    for (size_t j = 0; j < ndof - 6; ++j)
+		    for (size_t k = 1; k < numFrame; ++k)
 		    {
-			asubi.push_back(base + ii);
-			asubj.push_back(contactIdxEnd[k] + j);
-			aval.push_back(continuity);
-			asubi.push_back(base + ii);
-			asubj.push_back(contactIdxEnd[k - 1] + j);
-			aval.push_back(continuity);
-			asubi.push_back(base + ii);
-			asubj.push_back(base_j + ii);
-			aval.push_back(-1.0);
-			mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, 0.0, 0.0));
-			++ii;
+			for (size_t j = 0; j < ndof - 6; ++j)
+			{
+			    asubi.push_back(base + ii);
+			    asubj.push_back(contactIdxEnd[k] + j);
+			    aval.push_back(continuityWindow);
+			    asubi.push_back(base + ii);
+			    asubj.push_back(contactIdxEnd[k - 1] + j);
+			    aval.push_back(continuityWindow);
+			    asubi.push_back(base + ii);
+			    asubj.push_back(base_j + ii);
+			    aval.push_back(-1.0);
+			    mosekOK(MSK_putconbound(task, base + ii, MSK_BK_FX, 0.0, 0.0));
+			    ++ii;
+			}
 		    }
 		}
 		assert(ii == (ndof - 6) * numFrame || ii == (ndof - 6) * (numFrame - 1));
@@ -1149,10 +1169,24 @@ int main(int argc, char* argv[])
 	    mosekOK(MSK_putaijlist(task, aval.size(), asubi.data(), asubj.data(), aval.data()));
 
 	    // conic constraints
-	    if (continuity > 0)
+	    if (continuityFrame > 0)
 	    //if (false)
 	    {
 	        size_t n_xi_3 = (ndof - 6) * (i == f_start ? numFrame - 1 : numFrame);
+		if (i == f_start)
+		{
+		    if (continuityWindow > 0)
+			n_xi_3 = (ndof - 6) * (numFrame - 1);
+		    else
+			n_xi_3 = 0;
+		}
+		else
+		{
+		    if (continuityWindow > 0)
+			n_xi_3 = (ndof - 6) * numFrame;
+		    else
+			n_xi_3 = 1;
+		}
 	        size_t xi_3_offset = num_lambda + ndof * numFrame + n_contacts + ndof * numFrame + 1;
 	        vector<MSKint32t> csub(ndof * numFrame + n_contacts + 1 + n_xi_3);
 	        csub[0] = num_lambda + ndof * numFrame + n_contacts + ndof * numFrame; // t
