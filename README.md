@@ -22,7 +22,7 @@ Tools for performing inverse dynamics on [AMASS data](https://amass.is.tue.mpg.d
 
 The default building process uses python library in the current environment. See `CMakeLists.txt` if you want to use system python. To build the binaries, do
 ```
-cmake .
+cmake -DMOSEK_INCLUDE_PATH=/path/to/mosek/headers -DMOSEK_LIB_PATH=/path/to/mosek/libs .
 make
 ```
 This will generate `inverse.out`, `CharacterViewer.out` in the current working directory.
