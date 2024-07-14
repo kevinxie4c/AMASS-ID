@@ -11,6 +11,12 @@ Tools for performing inverse dynamics on [AMASS data](https://amass.is.tue.mpg.d
 
 [DART](https://dartsim.github.io/)
 
+[MOSEK](https://www.mosek.com/downloads/)
+
+[Perl](https://www.perl.org/)
+
+[Python](https://www.python.org/downloads/)
+
 
 ## Build
 
