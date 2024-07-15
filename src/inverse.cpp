@@ -17,8 +17,8 @@
 #define ALGLIB	0
 #define MOSEK	1
 #define OPTIMIZOR   MOSEK
-#define FULL_SOLVE
-#define USE_SIM_STATE
+//#define FULL_SOLVE
+//#define USE_SIM_STATE
 
 #if OPTIMIZOR == ALGLIB
 #include "ext/optimization.h"
