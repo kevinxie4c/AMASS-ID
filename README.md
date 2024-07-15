@@ -32,7 +32,7 @@ This will generate `inverse.out`, `CharacterViewer.out` in the current working d
 
 ## Usage
 
-In need to first download [SMPL+H](https://mano.is.tue.mpg.de/download.php) and [DMPLs](https://smpl.is.tue.mpg.de/download.php) model to use the pipeline. Unzip the model files into `data/body_models/smplh` and `data/body_models/dmpls`. This repo only include one motion data file `data/0005_Walking001_poses.npz` for demonstration, so you also need to download the motion data from [AMASS](https://amass.is.tue.mpg.de/download.php).
+You need to download [SMPL+H](https://mano.is.tue.mpg.de/download.php) and [DMPLs](https://smpl.is.tue.mpg.de/download.php) models to use the pipeline. Unzip the model files into `data/body_models/smplh` and `data/body_models/dmpls`. This repo only include one motion data file `data/0005_Walking001_poses.npz` for demonstration, so you also need to download the motion data from [AMASS](https://amass.is.tue.mpg.de/download.php).
 
 To perform inverse dynamics on the pose file `data/0005_Walking001_poses.npz` (with the default parameters), do
 ```
