@@ -13,6 +13,8 @@ Tools for performing inverse dynamics on [AMASS data](https://amass.is.tue.mpg.d
 
 [MOSEK](https://www.mosek.com/downloads/)
 
+[VPoser](https://github.com/nghorbani/human_body_prior)
+
 [Perl](https://www.perl.org/)
 
 [Python](https://www.python.org/downloads/)
@@ -29,6 +31,8 @@ This will generate `inverse.out`, `CharacterViewer.out` in the current working d
 
 
 ## Usage
+
+In need to first download [SMPL+H](https://mano.is.tue.mpg.de/download.php) and [DMPLs](https://smpl.is.tue.mpg.de/download.php) model to use the pipeline. Unzip the model files into `data/body_models/smplh` and `data/body_models/dmpls`. This repo only include one motion data file `data/0005_Walking001_poses.npz` for demonstration, so you also need to download the motion data from [AMASS](https://amass.is.tue.mpg.de/download.php).
 
 To perform inverse dynamics on the pose file `data/0005_Walking001_poses.npz` (with the default parameters), do
 ```
@@ -51,7 +55,7 @@ where `char_file` is the JSON file defining the character skeleton and propertie
 
 For example, to perform inverse dynamics on `data/0005_Walking001_poses.npz` with cutoff frequency of 5 Hz, do
 ```
-perl --cutoff_freq=5 inverse.pl data/0005_Walking001_poses.npz
+perl inverse.pl --cutoff_freq=5 data/0005_Walking001_poses.npz
 ```
 The script actually executes `find-contact-node.py`
 ```
