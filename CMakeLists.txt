@@ -26,8 +26,8 @@ message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
 message(STATUS "Python3_LINK_OPTIONS: ${Python3_LINK_OPTIONS}")
 message(STATUS "Python3_VERSION: ${Python3_VERSION}")
 
-# Sometimes python3-config output flags that miss some pieces. Otherwise you can remove the next line.
-set(PYTHON_LD_FLAGS_EXTRA "python${Python3_VERSION} -Wl,-rpath=${Python3_PREFIX}/lib")
+# Sometimes python3-config output flags that miss some pieces, then you can uncomment the next line.
+# set(PYTHON_LD_FLAGS_EXTRA "python${Python3_VERSION} -Wl,-rpath=${Python3_PREFIX}/lib")
 
 set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g")
